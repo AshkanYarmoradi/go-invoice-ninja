@@ -450,19 +450,6 @@ if err != nil {
 }
 ```
 
-## API Reference
-
-| Status Code | Description |
-|-------------|-------------|
-| 200 | Success |
-| 400 | Bad Request |
-| 401 | Unauthorized - Invalid API token |
-| 403 | Forbidden - No permission |
-| 404 | Not Found |
-| 422 | Validation Error |
-| 429 | Rate Limited |
-| 5xx | Server Error |
-
 ## 🧪 Testing
 
 ```bash
