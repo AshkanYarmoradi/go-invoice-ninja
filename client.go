@@ -70,6 +70,18 @@ type Client struct {
 
 	// Clients provides access to client-related endpoints.
 	Clients *ClientsService
+
+	// PaymentTerms provides access to payment terms endpoints.
+	PaymentTerms *PaymentTermsService
+
+	// Credits provides access to credit-related endpoints.
+	Credits *CreditsService
+
+	// Downloads provides access to file download operations.
+	Downloads *DownloadsService
+
+	// Uploads provides access to file upload operations.
+	Uploads *UploadsService
 }
 
 // ClientOption is a function that configures a Client.
@@ -114,6 +126,10 @@ func NewClient(apiToken string, opts ...ClientOption) *Client {
 	c.Payments = &PaymentsService{client: c}
 	c.Invoices = &InvoicesService{client: c}
 	c.Clients = &ClientsService{client: c}
+	c.PaymentTerms = &PaymentTermsService{client: c}
+	c.Credits = &CreditsService{client: c}
+	c.Downloads = &DownloadsService{client: c}
+	c.Uploads = &UploadsService{client: c}
 
 	return c
 }

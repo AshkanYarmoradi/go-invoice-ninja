@@ -12,7 +12,7 @@ import (
 	"log"
 	"net/url"
 
-	invoiceninja "github.com/invoiceninja/go-invoice-ninja"
+	invoiceninja "github.com/AshkanYarmoradi/go-invoice-ninja"
 )
 
 func Example_basicUsage() {

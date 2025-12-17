@@ -4,17 +4,20 @@ A professional Go SDK for the [Invoice Ninja](https://invoiceninja.com) API. Thi
 
 ## Features
 
-- **Payment-focused**: Specialized support for payments, invoices, and clients
+- **Payment-focused**: Specialized support for payments, invoices, clients, credits, and payment terms
+- **File operations**: Download PDFs and upload documents
+- **Webhook handling**: Built-in webhook handler with signature verification
+- **Rate limiting**: Client-side rate limiting with automatic retry logic
 - **Generic requests**: Access any API endpoint not covered by specialized methods
 - **Self-hosted support**: Works with both cloud (invoicing.co) and self-hosted instances
 - **Comprehensive error handling**: Typed errors with helper methods
 - **Context support**: All operations support Go's context for cancellation and timeouts
-- **Fully tested**: Comprehensive test coverage
+- **Fully tested**: 90+ tests with comprehensive coverage
 
 ## Installation
 
 ```bash
-go get github.com/invoiceninja/go-invoice-ninja/invoiceninja
+go get github.com/AshkanYarmoradi/go-invoice-ninja
 ```
 
 ## Quick Start
@@ -27,7 +30,7 @@ import (
     "fmt"
     "log"
 
-    "github.com/invoiceninja/go-invoice-ninja/invoiceninja"
+    invoiceninja "github.com/AshkanYarmoradi/go-invoice-ninja"
 )
 
 func main() {
@@ -223,6 +226,139 @@ newClient, err := client.Clients.Create(ctx, &invoiceninja.INClient{
 mergedClient, err := client.Clients.Merge(ctx, "primary-id", "mergeable-id")
 ```
 
+## Payment Terms
+
+```go
+// List payment terms
+terms, err := client.PaymentTerms.List(ctx, nil)
+
+// Create a payment term
+term, err := client.PaymentTerms.Create(ctx, &invoiceninja.PaymentTerm{
+    Name:    "Net 45",
+    NumDays: 45,
+})
+
+// Get, Update, Delete
+term, err := client.PaymentTerms.Get(ctx, "term-id")
+term, err := client.PaymentTerms.Update(ctx, "term-id", &invoiceninja.PaymentTerm{Name: "Net 60"})
+err := client.PaymentTerms.Delete(ctx, "term-id")
+```
+
+## Credits
+
+```go
+// List credits
+credits, err := client.Credits.List(ctx, &invoiceninja.CreditListOptions{
+    ClientID: "client-hash-id",
+    PerPage:  20,
+})
+
+// Create a credit
+credit, err := client.Credits.Create(ctx, &invoiceninja.Credit{
+    ClientID: "client-hash-id",
+    LineItems: []invoiceninja.LineItem{
+        {ProductKey: "Credit", Quantity: 1, Cost: 100.00},
+    },
+})
+
+// Credit actions
+credit, err := client.Credits.MarkSent(ctx, "credit-id")
+credit, err := client.Credits.Email(ctx, "credit-id")
+```
+
+## File Downloads
+
+```go
+// Download invoice PDF
+pdf, err := client.Downloads.DownloadInvoicePDF(ctx, "invitation-key")
+
+// Download delivery note
+pdf, err := client.Downloads.DownloadInvoiceDeliveryNote(ctx, "invoice-id")
+
+// Download credit PDF
+pdf, err := client.Downloads.DownloadCreditPDF(ctx, "invitation-key")
+
+// Save to file
+os.WriteFile("invoice.pdf", pdf, 0644)
+```
+
+## File Uploads
+
+```go
+// Upload document to invoice
+err := client.Uploads.UploadInvoiceDocument(ctx, "invoice-id", "/path/to/file.pdf")
+
+// Upload to other entities
+err := client.Uploads.UploadPaymentDocument(ctx, "payment-id", "/path/to/file.pdf")
+err := client.Uploads.UploadClientDocument(ctx, "client-id", "/path/to/file.pdf")
+err := client.Uploads.UploadCreditDocument(ctx, "credit-id", "/path/to/file.pdf")
+
+// Upload from io.Reader
+reader := bytes.NewReader(pdfContent)
+err := client.Uploads.UploadDocumentFromReader(ctx, "invoices", "invoice-id", "document.pdf", reader)
+```
+
+## Webhooks
+
+Handle incoming webhooks from Invoice Ninja:
+
+```go
+// Create a webhook handler
+handler := invoiceninja.NewWebhookHandler("your-webhook-secret")
+
+// Register event handlers
+handler.OnPaymentCreated(func(event *invoiceninja.WebhookEvent) error {
+    payment, err := event.ParsePayment()
+    if err != nil {
+        return err
+    }
+    fmt.Printf("New payment: %s ($%.2f)\n", payment.Number, payment.Amount)
+    return nil
+})
+
+handler.OnInvoiceCreated(func(event *invoiceninja.WebhookEvent) error {
+    invoice, err := event.ParseInvoice()
+    if err != nil {
+        return err
+    }
+    fmt.Printf("New invoice: %s\n", invoice.Number)
+    return nil
+})
+
+// Use as HTTP handler
+http.Handle("/webhook", handler)
+http.ListenAndServe(":8080", nil)
+```
+
+Supported webhook events:
+- `OnInvoiceCreated`, `OnInvoiceUpdated`, `OnInvoiceDeleted`
+- `OnPaymentCreated`, `OnPaymentUpdated`, `OnPaymentDeleted`
+- `OnClientCreated`, `OnClientUpdated`
+- `OnCreditCreated`, `OnQuoteCreated`
+
+## Rate Limiting & Retry
+
+For production use, use the rate-limited client with automatic retries:
+
+```go
+// Create a rate-limited client
+client := invoiceninja.NewRateLimitedClient("your-api-token",
+    invoiceninja.WithBaseURL("https://your-instance.com"))
+
+// Configure rate limit (requests per second)
+client.SetRateLimit(10)
+
+// Configure retry behavior
+client.SetRetryConfig(&invoiceninja.RetryConfig{
+    MaxRetries:         3,
+    InitialBackoff:     1 * time.Second,
+    MaxBackoff:         30 * time.Second,
+    BackoffMultiplier:  2.0,
+    RetryOnStatusCodes: []int{429, 500, 502, 503, 504},
+    Jitter:             true,
+})
+```
+
 ## Generic Requests
 
 For API endpoints not covered by specialized methods, use the generic request:
@@ -280,6 +416,20 @@ if err != nil {
 | 422 | Validation Error |
 | 429 | Rate Limited |
 | 5xx | Server Error |
+
+## Integration Tests
+
+Run integration tests against a live Invoice Ninja server:
+
+```bash
+# Run against demo server
+go test -tags=integration -v ./...
+
+# Run against custom server
+INVOICE_NINJA_BASE_URL=https://your-server.com \
+INVOICE_NINJA_API_TOKEN=your-token \
+go test -tags=integration -v ./...
+```
 
 ## License
 
