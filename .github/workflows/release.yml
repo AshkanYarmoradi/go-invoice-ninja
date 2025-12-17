@@ -24,7 +24,12 @@ jobs:
           go-version: '1.22'
 
       - name: Run tests
-        run: go test -v ./...
+        run: go test -v -coverprofile=coverage.txt ./...
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
