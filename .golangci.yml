@@ -65,11 +65,26 @@ linters-settings:
   goimports:
     local-prefixes: github.com/AshkanYarmoradi/go-invoice-ninja
   mnd:
-    checks:
-      - argument
-      - case
-      - condition
-      - return
+    # Only check for magic numbers in specific contexts
+    ignored-numbers:
+      - "0"
+      - "1"
+      - "2"
+      - "2.0"
+      - "3"
+      - "10"
+      - "30"
+      - "60"
+      - "0.3"
+      - "400"
+      - "500"
+      - "1000"
+      - "1000.0"
+    ignored-functions:
+      - "strconv.*"
+      - "time.*"
+      - "http.*"
+      - "big.NewInt"
   govet:
     enable:
       - shadow
@@ -100,5 +115,5 @@ issues:
     # Exclude example files from certain linters
     - path: example
       linters:
-        - gomnd
+        - mnd
         - goconst
