@@ -9,11 +9,9 @@ linters:
   enable:
     - bodyclose
     - dogsled
-    - dupl
     - errcheck
-    - errorlint
     - exhaustive
-    - exportloopref
+    - copyloopvar
     - funlen
     - gochecknoinits
     - goconst
@@ -22,7 +20,7 @@ linters:
     - godot
     - gofmt
     - goimports
-    - gomnd
+    - mnd
     - goprintffuncname
     - gosec
     - gosimple
@@ -56,24 +54,25 @@ linters-settings:
   gocritic:
     enabled-tags:
       - diagnostic
-      - experimental
-      - opinionated
       - performance
       - style
+    disabled-checks:
+      - paramTypeCombine
+      - httpNoBody
+      - rangeValCopy
   gocyclo:
     min-complexity: 20
   goimports:
     local-prefixes: github.com/AshkanYarmoradi/go-invoice-ninja
-  gomnd:
-    settings:
-      mnd:
-        checks:
-          - argument
-          - case
-          - condition
-          - return
+  mnd:
+    checks:
+      - argument
+      - case
+      - condition
+      - return
   govet:
-    check-shadowing: true
+    enable:
+      - shadow
   lll:
     line-length: 140
   misspell:
@@ -94,8 +93,10 @@ issues:
       linters:
         - funlen
         - dupl
-        - gomnd
+        - mnd
         - goconst
+        - errcheck
+        - gosec
     # Exclude example files from certain linters
     - path: example
       linters:

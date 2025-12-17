@@ -190,13 +190,13 @@ func (s *ClientsService) GetBlank(ctx context.Context) (*INClient, error) {
 
 // StatementRequest represents a client statement request.
 type StatementRequest struct {
-	ClientID   string `json:"client_id"`
-	StartDate  string `json:"start_date,omitempty"`
-	EndDate    string `json:"end_date,omitempty"`
-	ShowPayments bool `json:"show_payments_table,omitempty"`
-	ShowAging  bool   `json:"show_aging_table,omitempty"`
-	ShowCredits bool  `json:"show_credits_table,omitempty"`
-	Status     string `json:"status,omitempty"`
+	ClientID     string `json:"client_id"`
+	StartDate    string `json:"start_date,omitempty"`
+	EndDate      string `json:"end_date,omitempty"`
+	ShowPayments bool   `json:"show_payments_table,omitempty"`
+	ShowAging    bool   `json:"show_aging_table,omitempty"`
+	ShowCredits  bool   `json:"show_credits_table,omitempty"`
+	Status       string `json:"status,omitempty"`
 }
 
 // GetStatement generates a client statement.

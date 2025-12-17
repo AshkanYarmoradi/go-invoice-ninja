@@ -2,6 +2,7 @@ package invoiceninja
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 )
@@ -101,7 +102,8 @@ func parseAPIError(statusCode int, body []byte) *APIError {
 
 // IsAPIError checks if an error is an APIError and returns it.
 func IsAPIError(err error) (*APIError, bool) {
-	if apiErr, ok := err.(*APIError); ok {
+	var apiErr *APIError
+	if errors.As(err, &apiErr) {
 		return apiErr, true
 	}
 	return nil, false

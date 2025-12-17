@@ -64,9 +64,9 @@ func TestClientsServiceGet(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"data": map[string]interface{}{
-				"id":            "client123",
-				"name":          "Acme Corp",
-				"balance":       1000.00,
+				"id":             "client123",
+				"name":           "Acme Corp",
+				"balance":        1000.00,
 				"credit_balance": 50.00,
 			},
 		})

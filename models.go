@@ -4,35 +4,35 @@ import "encoding/json"
 
 // Payment represents a payment in Invoice Ninja.
 type Payment struct {
-	ID                  string           `json:"id,omitempty"`
-	ClientID            string           `json:"client_id,omitempty"`
-	InvitationID        string           `json:"invitation_id,omitempty"`
-	ClientContactID     string           `json:"client_contact_id,omitempty"`
-	UserID              string           `json:"user_id,omitempty"`
-	TypeID              string           `json:"type_id,omitempty"`
-	Date                string           `json:"date,omitempty"`
-	TransactionRef      string           `json:"transaction_reference,omitempty"`
-	AssignedUserID      string           `json:"assigned_user_id,omitempty"`
-	PrivateNotes        string           `json:"private_notes,omitempty"`
-	IsManual            bool             `json:"is_manual,omitempty"`
-	IsDeleted           bool             `json:"is_deleted,omitempty"`
-	Amount              float64          `json:"amount,omitempty"`
-	Refunded            float64          `json:"refunded,omitempty"`
-	UpdatedAt           int64            `json:"updated_at,omitempty"`
-	ArchivedAt          int64            `json:"archived_at,omitempty"`
-	CompanyGatewayID    string           `json:"company_gateway_id,omitempty"`
-	Number              string           `json:"number,omitempty"`
-	CategoryID          string           `json:"category_id,omitempty"`
-	CustomValue1        string           `json:"custom_value1,omitempty"`
-	CustomValue2        string           `json:"custom_value2,omitempty"`
-	CustomValue3        string           `json:"custom_value3,omitempty"`
-	CustomValue4        string           `json:"custom_value4,omitempty"`
-	ExchangeCurrencyID  string           `json:"exchange_currency_id,omitempty"`
-	ExchangeRate        float64          `json:"exchange_rate,omitempty"`
-	IdempotencyKey      string           `json:"idempotency_key,omitempty"`
-	Paymentables        []Paymentable    `json:"paymentables,omitempty"`
-	Invoices            []PaymentInvoice `json:"invoices,omitempty"`
-	Credits             []PaymentCredit  `json:"credits,omitempty"`
+	ID                 string           `json:"id,omitempty"`
+	ClientID           string           `json:"client_id,omitempty"`
+	InvitationID       string           `json:"invitation_id,omitempty"`
+	ClientContactID    string           `json:"client_contact_id,omitempty"`
+	UserID             string           `json:"user_id,omitempty"`
+	TypeID             string           `json:"type_id,omitempty"`
+	Date               string           `json:"date,omitempty"`
+	TransactionRef     string           `json:"transaction_reference,omitempty"`
+	AssignedUserID     string           `json:"assigned_user_id,omitempty"`
+	PrivateNotes       string           `json:"private_notes,omitempty"`
+	IsManual           bool             `json:"is_manual,omitempty"`
+	IsDeleted          bool             `json:"is_deleted,omitempty"`
+	Amount             float64          `json:"amount,omitempty"`
+	Refunded           float64          `json:"refunded,omitempty"`
+	UpdatedAt          int64            `json:"updated_at,omitempty"`
+	ArchivedAt         int64            `json:"archived_at,omitempty"`
+	CompanyGatewayID   string           `json:"company_gateway_id,omitempty"`
+	Number             string           `json:"number,omitempty"`
+	CategoryID         string           `json:"category_id,omitempty"`
+	CustomValue1       string           `json:"custom_value1,omitempty"`
+	CustomValue2       string           `json:"custom_value2,omitempty"`
+	CustomValue3       string           `json:"custom_value3,omitempty"`
+	CustomValue4       string           `json:"custom_value4,omitempty"`
+	ExchangeCurrencyID string           `json:"exchange_currency_id,omitempty"`
+	ExchangeRate       float64          `json:"exchange_rate,omitempty"`
+	IdempotencyKey     string           `json:"idempotency_key,omitempty"`
+	Paymentables       []Paymentable    `json:"paymentables,omitempty"`
+	Invoices           []PaymentInvoice `json:"invoices,omitempty"`
+	Credits            []PaymentCredit  `json:"credits,omitempty"`
 }
 
 // PaymentRequest represents a request to create or update a payment.
@@ -76,61 +76,61 @@ type Paymentable struct {
 
 // Invoice represents an invoice in Invoice Ninja.
 type Invoice struct {
-	ID             string        `json:"id,omitempty"`
-	UserID         string        `json:"user_id,omitempty"`
-	AssignedUserID string        `json:"assigned_user_id,omitempty"`
-	ClientID       string        `json:"client_id,omitempty"`
-	StatusID       string        `json:"status_id,omitempty"`
-	Number         string        `json:"number,omitempty"`
-	PONumber       string        `json:"po_number,omitempty"`
-	Terms          string        `json:"terms,omitempty"`
-	PublicNotes    string        `json:"public_notes,omitempty"`
-	PrivateNotes   string        `json:"private_notes,omitempty"`
-	Footer         string        `json:"footer,omitempty"`
-	CustomValue1   string        `json:"custom_value1,omitempty"`
-	CustomValue2   string        `json:"custom_value2,omitempty"`
-	CustomValue3   string        `json:"custom_value3,omitempty"`
-	CustomValue4   string        `json:"custom_value4,omitempty"`
-	TaxName1       string        `json:"tax_name1,omitempty"`
-	TaxName2       string        `json:"tax_name2,omitempty"`
-	TaxName3       string        `json:"tax_name3,omitempty"`
-	TaxRate1       float64       `json:"tax_rate1,omitempty"`
-	TaxRate2       float64       `json:"tax_rate2,omitempty"`
-	TaxRate3       float64       `json:"tax_rate3,omitempty"`
-	TotalTaxes     float64       `json:"total_taxes,omitempty"`
-	Amount         float64       `json:"amount,omitempty"`
-	Balance        float64       `json:"balance,omitempty"`
-	PaidToDate     float64       `json:"paid_to_date,omitempty"`
-	Discount       float64       `json:"discount,omitempty"`
-	PartialDueDate string        `json:"partial_due_date,omitempty"`
-	DueDate        string        `json:"due_date,omitempty"`
-	Date           string        `json:"date,omitempty"`
-	LineItems      []LineItem    `json:"line_items,omitempty"`
-	IsDeleted      bool          `json:"is_deleted,omitempty"`
-	UpdatedAt      int64         `json:"updated_at,omitempty"`
-	ArchivedAt     int64         `json:"archived_at,omitempty"`
-	CreatedAt      int64         `json:"created_at,omitempty"`
+	ID             string     `json:"id,omitempty"`
+	UserID         string     `json:"user_id,omitempty"`
+	AssignedUserID string     `json:"assigned_user_id,omitempty"`
+	ClientID       string     `json:"client_id,omitempty"`
+	StatusID       string     `json:"status_id,omitempty"`
+	Number         string     `json:"number,omitempty"`
+	PONumber       string     `json:"po_number,omitempty"`
+	Terms          string     `json:"terms,omitempty"`
+	PublicNotes    string     `json:"public_notes,omitempty"`
+	PrivateNotes   string     `json:"private_notes,omitempty"`
+	Footer         string     `json:"footer,omitempty"`
+	CustomValue1   string     `json:"custom_value1,omitempty"`
+	CustomValue2   string     `json:"custom_value2,omitempty"`
+	CustomValue3   string     `json:"custom_value3,omitempty"`
+	CustomValue4   string     `json:"custom_value4,omitempty"`
+	TaxName1       string     `json:"tax_name1,omitempty"`
+	TaxName2       string     `json:"tax_name2,omitempty"`
+	TaxName3       string     `json:"tax_name3,omitempty"`
+	TaxRate1       float64    `json:"tax_rate1,omitempty"`
+	TaxRate2       float64    `json:"tax_rate2,omitempty"`
+	TaxRate3       float64    `json:"tax_rate3,omitempty"`
+	TotalTaxes     float64    `json:"total_taxes,omitempty"`
+	Amount         float64    `json:"amount,omitempty"`
+	Balance        float64    `json:"balance,omitempty"`
+	PaidToDate     float64    `json:"paid_to_date,omitempty"`
+	Discount       float64    `json:"discount,omitempty"`
+	PartialDueDate string     `json:"partial_due_date,omitempty"`
+	DueDate        string     `json:"due_date,omitempty"`
+	Date           string     `json:"date,omitempty"`
+	LineItems      []LineItem `json:"line_items,omitempty"`
+	IsDeleted      bool       `json:"is_deleted,omitempty"`
+	UpdatedAt      int64      `json:"updated_at,omitempty"`
+	ArchivedAt     int64      `json:"archived_at,omitempty"`
+	CreatedAt      int64      `json:"created_at,omitempty"`
 }
 
 // LineItem represents a line item on an invoice.
 type LineItem struct {
-	Quantity        float64 `json:"quantity,omitempty"`
-	Cost            float64 `json:"cost,omitempty"`
-	ProductKey      string  `json:"product_key,omitempty"`
-	Notes           string  `json:"notes,omitempty"`
-	Discount        float64 `json:"discount,omitempty"`
-	IsAmountDisc    bool    `json:"is_amount_discount,omitempty"`
-	TaxName1        string  `json:"tax_name1,omitempty"`
-	TaxRate1        float64 `json:"tax_rate1,omitempty"`
-	TaxName2        string  `json:"tax_name2,omitempty"`
-	TaxRate2        float64 `json:"tax_rate2,omitempty"`
-	TaxName3        string  `json:"tax_name3,omitempty"`
-	TaxRate3        float64 `json:"tax_rate3,omitempty"`
-	CustomValue1    string  `json:"custom_value1,omitempty"`
-	CustomValue2    string  `json:"custom_value2,omitempty"`
-	CustomValue3    string  `json:"custom_value3,omitempty"`
-	CustomValue4    string  `json:"custom_value4,omitempty"`
-	TypeID          string  `json:"type_id,omitempty"`
+	Quantity     float64 `json:"quantity,omitempty"`
+	Cost         float64 `json:"cost,omitempty"`
+	ProductKey   string  `json:"product_key,omitempty"`
+	Notes        string  `json:"notes,omitempty"`
+	Discount     float64 `json:"discount,omitempty"`
+	IsAmountDisc bool    `json:"is_amount_discount,omitempty"`
+	TaxName1     string  `json:"tax_name1,omitempty"`
+	TaxRate1     float64 `json:"tax_rate1,omitempty"`
+	TaxName2     string  `json:"tax_name2,omitempty"`
+	TaxRate2     float64 `json:"tax_rate2,omitempty"`
+	TaxName3     string  `json:"tax_name3,omitempty"`
+	TaxRate3     float64 `json:"tax_rate3,omitempty"`
+	CustomValue1 string  `json:"custom_value1,omitempty"`
+	CustomValue2 string  `json:"custom_value2,omitempty"`
+	CustomValue3 string  `json:"custom_value3,omitempty"`
+	CustomValue4 string  `json:"custom_value4,omitempty"`
+	TypeID       string  `json:"type_id,omitempty"`
 }
 
 // INClient represents a client in Invoice Ninja.
@@ -227,12 +227,12 @@ type BulkAction struct {
 
 // RefundRequest represents a refund request.
 type RefundRequest struct {
-	ID          string           `json:"id"`
-	Amount      float64          `json:"amount,omitempty"`
-	Invoices    []PaymentInvoice `json:"invoices,omitempty"`
-	Date        string           `json:"date,omitempty"`
-	GatewayRefund bool           `json:"gateway_refund,omitempty"`
-	SendEmail   bool             `json:"send_email,omitempty"`
+	ID            string           `json:"id"`
+	Amount        float64          `json:"amount,omitempty"`
+	Invoices      []PaymentInvoice `json:"invoices,omitempty"`
+	Date          string           `json:"date,omitempty"`
+	GatewayRefund bool             `json:"gateway_refund,omitempty"`
+	SendEmail     bool             `json:"send_email,omitempty"`
 }
 
 // GenericResponse is used for arbitrary JSON responses.

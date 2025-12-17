@@ -151,7 +151,7 @@ func (c *Client) RequestWithQuery(ctx context.Context, method, path string, quer
 }
 
 // doRequest performs the actual HTTP request.
-func (c *Client) doRequest(ctx context.Context, method, path string, query url.Values, body interface{}, result interface{}) error {
+func (c *Client) doRequest(ctx context.Context, method, path string, query url.Values, body, result interface{}) error {
 	// Build URL
 	u, err := url.Parse(c.baseURL + path)
 	if err != nil {
@@ -164,9 +164,9 @@ func (c *Client) doRequest(ctx context.Context, method, path string, query url.V
 	// Prepare request body
 	var bodyReader io.Reader
 	if body != nil {
-		jsonBody, err := json.Marshal(body)
-		if err != nil {
-			return fmt.Errorf("failed to marshal request body: %w", err)
+		jsonBody, marshalErr := json.Marshal(body)
+		if marshalErr != nil {
+			return fmt.Errorf("failed to marshal request body: %w", marshalErr)
 		}
 		bodyReader = bytes.NewReader(jsonBody)
 	}

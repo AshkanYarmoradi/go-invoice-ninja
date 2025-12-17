@@ -123,12 +123,12 @@ func (s *UploadsService) uploadFromReader(ctx context.Context, path, filename st
 		return fmt.Errorf("failed to create form file: %w", err)
 	}
 
-	if _, err := io.Copy(part, reader); err != nil {
-		return fmt.Errorf("failed to copy file content: %w", err)
+	if _, copyErr := io.Copy(part, reader); copyErr != nil {
+		return fmt.Errorf("failed to copy file content: %w", copyErr)
 	}
 
-	if err := writer.Close(); err != nil {
-		return fmt.Errorf("failed to close multipart writer: %w", err)
+	if closeErr := writer.Close(); closeErr != nil {
+		return fmt.Errorf("failed to close multipart writer: %w", closeErr)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, "POST", s.client.baseURL+path, &buf)

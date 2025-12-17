@@ -150,7 +150,7 @@ func TestInvoicesServiceUpdate(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"data": map[string]interface{}{
-				"id":      "inv123",
+				"id":        "inv123",
 				"po_number": "PO-12345",
 			},
 		})

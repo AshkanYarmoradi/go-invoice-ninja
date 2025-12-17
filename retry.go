@@ -2,8 +2,9 @@ package invoiceninja
 
 import (
 	"context"
+	"crypto/rand"
 	"math"
-	"math/rand"
+	"math/big"
 	"net/http"
 	"strconv"
 	"sync"
@@ -131,8 +132,9 @@ func (c *RateLimitedClient) SetRetryConfig(config *RetryConfig) {
 	c.retryConfig = config
 }
 
-// doRequestWithRetry performs a request with rate limiting and retry logic.
-func (c *RateLimitedClient) doRequestWithRetry(ctx context.Context, method, path string, query, body, result interface{}) error {
+// DoRequestWithRetry performs a request with rate limiting and retry logic.
+// This method provides automatic retries with exponential backoff for transient errors.
+func (c *RateLimitedClient) DoRequestWithRetry(ctx context.Context, method, path string, query, body, result interface{}) error {
 	var lastErr error
 
 	for attempt := 0; attempt <= c.retryConfig.MaxRetries; attempt++ {
@@ -204,8 +206,12 @@ func (c *RateLimitedClient) calculateBackoff(attempt int, err error) time.Durati
 
 	// Apply jitter
 	if c.retryConfig.Jitter {
-		jitter := rand.Float64() * 0.3 * backoff // Up to 30% jitter
-		backoff = backoff + jitter
+		// Use crypto/rand for secure random number generation
+		randInt, randErr := rand.Int(rand.Reader, big.NewInt(1000))
+		if randErr == nil {
+			jitter := (float64(randInt.Int64()) / 1000.0) * 0.3 * backoff // Up to 30% jitter
+			backoff += jitter
+		}
 	}
 
 	// Cap at max backoff
