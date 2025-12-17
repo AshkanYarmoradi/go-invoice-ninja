@@ -1,0 +1,13 @@
+{
+  "data": {
+    "id": "test-payment-id",
+    "client_id": "test-client-id",
+    "number": "0001",
+    "amount": 250.00,
+    "date": "2024-01-15",
+    "transaction_reference": "TXN-12345",
+    "private_notes": "Test payment",
+    "is_deleted": false,
+    "updated_at": 1705305600
+  }
+}

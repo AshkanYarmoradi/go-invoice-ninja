@@ -1,26 +1,72 @@
 # Go Invoice Ninja SDK
 
-A professional Go SDK for the [Invoice Ninja](https://invoiceninja.com) API. This SDK provides a clean, idiomatic Go interface for interacting with Invoice Ninja's payment-related functionality.
+[![Go Reference](https://pkg.go.dev/badge/github.com/AshkanYarmoradi/go-invoice-ninja.svg)](https://pkg.go.dev/github.com/AshkanYarmoradi/go-invoice-ninja)
+[![Go Report Card](https://goreportcard.com/badge/github.com/AshkanYarmoradi/go-invoice-ninja)](https://goreportcard.com/report/github.com/AshkanYarmoradi/go-invoice-ninja)
+[![CI](https://github.com/AshkanYarmoradi/go-invoice-ninja/actions/workflows/ci.yml/badge.svg)](https://github.com/AshkanYarmoradi/go-invoice-ninja/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/AshkanYarmoradi/go-invoice-ninja/branch/main/graph/badge.svg)](https://codecov.io/gh/AshkanYarmoradi/go-invoice-ninja)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## Features
+A professional, idiomatic Go SDK for the [Invoice Ninja](https://invoiceninja.com) API. This SDK provides a clean interface for interacting with Invoice Ninja's comprehensive invoicing and payment platform.
 
-- **Payment-focused**: Specialized support for payments, invoices, clients, credits, and payment terms
-- **File operations**: Download PDFs and upload documents
-- **Webhook handling**: Built-in webhook handler with signature verification
-- **Rate limiting**: Client-side rate limiting with automatic retry logic
-- **Generic requests**: Access any API endpoint not covered by specialized methods
-- **Self-hosted support**: Works with both cloud (invoicing.co) and self-hosted instances
-- **Comprehensive error handling**: Typed errors with helper methods
-- **Context support**: All operations support Go's context for cancellation and timeouts
-- **Fully tested**: 90+ tests with comprehensive coverage
+## ✨ Features
 
-## Installation
+- 🔐 **Secure Authentication** - Token-based API authentication
+- 💳 **Payment Management** - Full CRUD operations with refund support
+- 📄 **Invoice Operations** - Create, send, and manage invoices
+- 👥 **Client Management** - Client CRUD with merge capabilities
+- 💰 **Credits & Payment Terms** - Complete credit and terms management
+- 📥 **File Operations** - Download PDFs and upload documents
+- 🔔 **Webhook Handling** - Built-in handler with signature verification
+- ⚡ **Rate Limiting** - Client-side limiting with automatic retry
+- 🔄 **Retry Logic** - Exponential backoff for transient failures
+- 🌐 **Self-hosted Support** - Works with cloud and self-hosted instances
+- ✅ **Fully Tested** - 90+ tests with comprehensive coverage
+
+## 📦 Installation
 
 ```bash
 go get github.com/AshkanYarmoradi/go-invoice-ninja
 ```
 
-## Quick Start
+## 📖 Documentation
+
+- [Getting Started](docs/getting-started.md)
+- [Authentication](docs/authentication.md)
+- [Error Handling](docs/error-handling.md)
+- [API Reference](docs/api-reference.md)
+
+## 🏗️ Project Structure
+
+```
+go-invoice-ninja/
+├── .github/workflows/     # CI/CD pipelines
+├── docs/                  # Detailed documentation
+├── examples/              # Runnable examples
+│   ├── basic/            # Basic usage
+│   ├── invoices/         # Invoice operations
+│   └── webhooks/         # Webhook handling
+├── testdata/              # Test fixtures
+│
+├── client.go             # Main client
+├── clients.go            # Clients service
+├── credits.go            # Credits service
+├── errors.go             # Error types
+├── files.go              # File operations
+├── invoices.go           # Invoices service
+├── models.go             # Data models
+├── payments.go           # Payments service
+├── payment_terms.go      # Payment terms
+├── retry.go              # Retry & rate limiting
+├── webhooks.go           # Webhook handling
+│
+├── CHANGELOG.md          # Version history
+├── CONTRIBUTING.md       # Contribution guide
+├── LICENSE               # MIT License
+├── Makefile              # Build automation
+└── README.md             # This file
+```
+
+## 🚀 Quick Start
 
 ```go
 package main
@@ -58,7 +104,7 @@ func main() {
 }
 ```
 
-## Authentication
+## 🔑 Authentication
 
 All API requests require an API token. You can obtain your token from:
 **Settings > Account Management > Integrations > API tokens**
@@ -67,7 +113,7 @@ All API requests require an API token. You can obtain your token from:
 client := invoiceninja.NewClient("your-api-token")
 ```
 
-## Configuration Options
+## ⚙️ Configuration Options
 
 ```go
 // Custom HTTP client
@@ -83,7 +129,7 @@ client := invoiceninja.NewClient("token",
     invoiceninja.WithTimeout(60 * time.Second))
 ```
 
-## Payments
+## 💳 Payments
 
 ### List Payments
 
@@ -417,7 +463,23 @@ if err != nil {
 | 429 | Rate Limited |
 | 5xx | Server Error |
 
-## Integration Tests
+## 🧪 Testing
+
+```bash
+# Run all tests
+make test
+
+# Run with race detector
+make test-race
+
+# Run with coverage
+make coverage
+
+# Run linter
+make lint
+```
+
+## 🔗 Integration Tests
 
 Run integration tests against a live Invoice Ninja server:
 
@@ -431,27 +493,47 @@ INVOICE_NINJA_API_TOKEN=your-token \
 go test -tags=integration -v ./...
 ```
 
-## License
+## 📚 Examples
 
-This SDK is released under the MIT License.
+Check out the [examples](examples/) directory for complete working examples:
 
-## Contributing
+- [Basic Usage](examples/basic/) - Getting started
+- [Invoice Management](examples/invoices/) - Creating and managing invoices
+- [Webhook Handling](examples/webhooks/) - Setting up webhook handlers
+
+## 📋 API Reference
+
+| Status Code | Description |
+|-------------|-------------|
+| 200 | Success |
+| 400 | Bad Request |
+| 401 | Unauthorized - Invalid API token |
+| 403 | Forbidden - No permission |
+| 404 | Not Found |
+| 422 | Validation Error |
+| 429 | Rate Limited |
+| 5xx | Server Error |
+
+## 📄 License
+
+This SDK is released under the [MIT License](LICENSE).
+
+## 🤝 Contributing
+
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/amazing-feature`)
 3. Write tests for your changes
-4. Ensure all tests pass (`go test -v ./...`)
-5. Commit your changes (`git commit -m 'feat: add amazing feature'`)
-6. Push to the branch (`git push origin feature/amazing-feature`)
-7. Open a Pull Request
+4. Ensure all tests pass (`make test`)
+5. Run the linter (`make lint`)
+6. Commit your changes (`git commit -m 'feat: add amazing feature'`)
+7. Push to the branch (`git push origin feature/amazing-feature`)
+8. Open a Pull Request
 
-### Commit Message Convention
+## 📞 Support
 
-We follow [Conventional Commits](https://www.conventionalcommits.org/):
+- [GitHub Issues](https://github.com/AshkanYarmoradi/go-invoice-ninja/issues)
+- [Invoice Ninja Documentation](https://invoiceninja.github.io/)
+- [Invoice Ninja API Reference](https://api-docs.invoicing.co/)
 
-- `feat:` - New feature
-- `fix:` - Bug fix
-- `docs:` - Documentation changes
-- `test:` - Adding or updating tests
-- `refactor:` - Code refactoring
-- `chore:` - Maintenance tasks
