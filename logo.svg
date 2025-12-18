@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a2e"/>
+      <stop offset="100%" style="stop-color:#16213e"/>
+    </linearGradient>
+    <linearGradient id="goBlue" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#00ADD8"/>
+      <stop offset="100%" style="stop-color:#007D9C"/>
+    </linearGradient>
+    <linearGradient id="ninjaRed" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FF6B6B"/>
+      <stop offset="100%" style="stop-color:#EE5A24"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="400" height="400" fill="url(#bgGradient)" rx="20"/>
+  
+  <!-- Ninja Body/Hood -->
+  <ellipse cx="200" cy="200" rx="100" ry="110" fill="#2d2d2d"/>
+  
+  <!-- Ninja Face Wrap -->
+  <path d="M100 180 Q100 140 200 140 Q300 140 300 180 L300 220 Q300 260 200 260 Q100 260 100 220 Z" fill="#1a1a1a"/>
+  
+  <!-- Eye Band -->
+  <rect x="110" y="170" width="180" height="50" fill="url(#ninjaRed)" rx="10"/>
+  
+  <!-- Left Eye -->
+  <ellipse cx="155" cy="195" rx="25" ry="18" fill="#fff"/>
+  <ellipse cx="160" cy="195" rx="12" ry="12" fill="url(#goBlue)"/>
+  <ellipse cx="163" cy="192" rx="5" ry="5" fill="#fff"/>
+  
+  <!-- Right Eye -->
+  <ellipse cx="245" cy="195" rx="25" ry="18" fill="#fff"/>
+  <ellipse cx="250" cy="195" rx="12" ry="12" fill="url(#goBlue)"/>
+  <ellipse cx="253" cy="192" rx="5" ry="5" fill="#fff"/>
+  
+  <!-- Invoice/Document -->
+  <g transform="translate(260, 250) rotate(15)">
+    <rect x="0" y="0" width="70" height="90" fill="#fff" rx="5" filter="url(#glow)"/>
+    <rect x="10" y="15" width="40" height="4" fill="#ddd" rx="2"/>
+    <rect x="10" y="25" width="50" height="4" fill="#ddd" rx="2"/>
+    <rect x="10" y="35" width="35" height="4" fill="#ddd" rx="2"/>
+    <rect x="10" y="50" width="50" height="4" fill="url(#goBlue)" rx="2"/>
+    <rect x="10" y="60" width="45" height="4" fill="url(#goBlue)" rx="2"/>
+    <text x="35" y="82" font-family="monospace" font-size="10" fill="url(#ninjaRed)" text-anchor="middle">$$$</text>
+  </g>
+  
+  <!-- Go Gopher Ears -->
+  <ellipse cx="130" cy="115" rx="25" ry="30" fill="url(#goBlue)"/>
+  <ellipse cx="270" cy="115" rx="25" ry="30" fill="url(#goBlue)"/>
+  <ellipse cx="130" cy="115" rx="15" ry="20" fill="#007D9C"/>
+  <ellipse cx="270" cy="115" rx="15" ry="20" fill="#007D9C"/>
+  
+  <!-- Ninja Star (Shuriken) -->
+  <g transform="translate(70, 280)">
+    <polygon points="30,0 35,25 60,30 35,35 30,60 25,35 0,30 25,25" fill="url(#goBlue)" filter="url(#glow)"/>
+    <circle cx="30" cy="30" r="8" fill="#1a1a2e"/>
+  </g>
+  
+  <!-- Text -->
+  <text x="200" y="350" font-family="'Segoe UI', Arial, sans-serif" font-size="24" font-weight="bold" fill="#fff" text-anchor="middle" filter="url(#glow)">
+    <tspan fill="url(#goBlue)">Go</tspan>
+    <tspan fill="#fff"> Invoice </tspan>
+    <tspan fill="url(#ninjaRed)">Ninja</tspan>
+  </text>
+  
+  <!-- Version Badge -->
+  <g transform="translate(320, 30)">
+    <rect x="0" y="0" width="50" height="20" fill="url(#goBlue)" rx="10"/>
+    <text x="25" y="14" font-family="monospace" font-size="10" fill="#fff" text-anchor="middle">SDK</text>
+  </g>
+</svg>
