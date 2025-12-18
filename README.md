@@ -1,10 +1,16 @@
-# Go Invoice Ninja SDK
+<p align="center">
+  <img src="assets/banner.svg" alt="Go Invoice Ninja SDK" width="800">
+</p>
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/AshkanYarmoradi/go-invoice-ninja.svg)](https://pkg.go.dev/github.com/AshkanYarmoradi/go-invoice-ninja)
-[![Go Report Card](https://goreportcard.com/badge/github.com/AshkanYarmoradi/go-invoice-ninja)](https://goreportcard.com/report/github.com/AshkanYarmoradi/go-invoice-ninja)
-[![CI](https://github.com/AshkanYarmoradi/go-invoice-ninja/actions/workflows/ci.yml/badge.svg)](https://github.com/AshkanYarmoradi/go-invoice-ninja/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/AshkanYarmoradi/go-invoice-ninja/branch/main/graph/badge.svg)](https://codecov.io/gh/AshkanYarmoradi/go-invoice-ninja)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+<h1 align="center">Go Invoice Ninja SDK</h1>
+
+<p align="center">
+  <a href="https://pkg.go.dev/github.com/AshkanYarmoradi/go-invoice-ninja"><img src="https://pkg.go.dev/badge/github.com/AshkanYarmoradi/go-invoice-ninja.svg" alt="Go Reference"></a>
+  <a href="https://goreportcard.com/report/github.com/AshkanYarmoradi/go-invoice-ninja"><img src="https://goreportcard.com/badge/github.com/AshkanYarmoradi/go-invoice-ninja" alt="Go Report Card"></a>
+  <a href="https://github.com/AshkanYarmoradi/go-invoice-ninja/actions/workflows/ci.yml"><img src="https://github.com/AshkanYarmoradi/go-invoice-ninja/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://codecov.io/gh/AshkanYarmoradi/go-invoice-ninja"><img src="https://codecov.io/gh/AshkanYarmoradi/go-invoice-ninja/branch/main/graph/badge.svg" alt="codecov"></a>
+  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
+</p>
 
 A professional, idiomatic Go SDK for the [Invoice Ninja](https://invoiceninja.com) API. This SDK provides a clean interface for interacting with Invoice Ninja's comprehensive invoicing and payment platform.
 
@@ -523,4 +529,43 @@ Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for gui
 - [GitHub Issues](https://github.com/AshkanYarmoradi/go-invoice-ninja/issues)
 - [Invoice Ninja Documentation](https://invoiceninja.github.io/)
 - [Invoice Ninja API Reference](https://api-docs.invoicing.co/)
+
+---
+
+<p align="center">
+  <img src="logo.svg" alt="Go Invoice Ninja Logo" width="150">
+</p>
+
+```
+                    ╔═══════════════════════════════════════════════════════════╗
+                    ║                                                           ║
+                    ║             ██████╗  ██████╗                              ║
+                    ║            ██╔════╝ ██╔═══██╗                             ║
+                    ║            ██║  ███╗██║   ██║                             ║
+                    ║            ██║   ██║██║   ██║                             ║
+                    ║            ╚██████╔╝╚██████╔╝                             ║
+                    ║             ╚═════╝  ╚═════╝                              ║
+                    ║                                                           ║
+                    ║    ██╗███╗   ██╗██╗   ██╗ ██████╗ ██╗ ██████╗███████╗     ║
+                    ║    ██║████╗  ██║██║   ██║██╔═══██╗██║██╔════╝██╔════╝     ║
+                    ║    ██║██╔██╗ ██║██║   ██║██║   ██║██║██║     █████╗       ║
+                    ║    ██║██║╚██╗██║╚██╗ ██╔╝██║   ██║██║██║     ██╔══╝       ║
+                    ║    ██║██║ ╚████║ ╚████╔╝ ╚██████╔╝██║╚██████╗███████╗     ║
+                    ║    ╚═╝╚═╝  ╚═══╝  ╚═══╝   ╚═════╝ ╚═╝ ╚═════╝╚══════╝     ║
+                    ║                                                           ║
+                    ║    ███╗   ██╗██╗███╗   ██╗     ██╗ █████╗                 ║
+                    ║    ████╗  ██║██║████╗  ██║     ██║██╔══██╗                ║
+                    ║    ██╔██╗ ██║██║██╔██╗ ██║     ██║███████║                ║
+                    ║    ██║╚██╗██║██║██║╚██╗██║██   ██║██╔══██║                ║
+                    ║    ██║ ╚████║██║██║ ╚████║╚█████╔╝██║  ██║                ║
+                    ║    ╚═╝  ╚═══╝╚═╝╚═╝  ╚═══╝ ╚════╝ ╚═╝  ╚═╝                ║
+                    ║                                                           ║
+                    ║           ⭐ Star us on GitHub! ⭐                       ║
+                    ║                                                           ║
+                    ╚═══════════════════════════════════════════════════════════╝
+```
+
+<p align="center">
+  Made with ❤️ by <a href="https://github.com/AshkanYarmoradi">Ashkan Yarmoradi</a>
+</p>
 

@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 200">
+  <defs>
+    <linearGradient id="bannerBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0d1117"/>
+      <stop offset="50%" style="stop-color:#161b22"/>
+      <stop offset="100%" style="stop-color:#0d1117"/>
+    </linearGradient>
+    <linearGradient id="goBlue2" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#00ADD8"/>
+      <stop offset="100%" style="stop-color:#00D4FF"/>
+    </linearGradient>
+    <linearGradient id="ninjaOrange" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#FF6B6B"/>
+      <stop offset="100%" style="stop-color:#FFA502"/>
+    </linearGradient>
+    <filter id="glow2">
+      <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="800" height="200" fill="url(#bannerBg)"/>
+  
+  <!-- Decorative code lines -->
+  <text x="20" y="30" font-family="monospace" font-size="12" fill="#30363d" opacity="0.5">package invoiceninja</text>
+  <text x="20" y="50" font-family="monospace" font-size="12" fill="#30363d" opacity="0.5">func NewClient(token string) *Client {</text>
+  <text x="600" y="170" font-family="monospace" font-size="12" fill="#30363d" opacity="0.5">return &amp;Client{token: token}</text>
+  <text x="650" y="190" font-family="monospace" font-size="12" fill="#30363d" opacity="0.5">}</text>
+  
+  <!-- Mini Ninja Icon -->
+  <g transform="translate(80, 60)">
+    <!-- Head -->
+    <circle cx="40" cy="40" r="35" fill="#2d2d2d"/>
+    <!-- Eye band -->
+    <rect x="10" y="30" width="60" height="18" fill="url(#ninjaOrange)" rx="5"/>
+    <!-- Eyes -->
+    <ellipse cx="28" cy="39" rx="8" ry="6" fill="#fff"/>
+    <circle cx="30" cy="39" r="4" fill="url(#goBlue2)"/>
+    <ellipse cx="52" cy="39" rx="8" ry="6" fill="#fff"/>
+    <circle cx="54" cy="39" r="4" fill="url(#goBlue2)"/>
+    <!-- Gopher ears -->
+    <ellipse cx="18" cy="15" rx="10" ry="12" fill="url(#goBlue2)"/>
+    <ellipse cx="62" cy="15" rx="10" ry="12" fill="url(#goBlue2)"/>
+  </g>
+  
+  <!-- Main Title -->
+  <text x="180" y="95" font-family="'Segoe UI', 'SF Pro Display', Arial, sans-serif" font-size="48" font-weight="bold" filter="url(#glow2)">
+    <tspan fill="url(#goBlue2)">Go</tspan>
+    <tspan fill="#ffffff"> Invoice </tspan>
+    <tspan fill="url(#ninjaOrange)">Ninja</tspan>
+  </text>
+  
+  <!-- Subtitle -->
+  <text x="180" y="125" font-family="'Segoe UI', Arial, sans-serif" font-size="18" fill="#8b949e">
+    Professional Go SDK for Invoice Ninja API
+  </text>
+  
+  <!-- Feature badges -->
+  <g transform="translate(180, 140)">
+    <rect x="0" y="0" width="80" height="24" fill="#238636" rx="12"/>
+    <text x="40" y="16" font-family="monospace" font-size="11" fill="#fff" text-anchor="middle">✓ Tested</text>
+    
+    <rect x="90" y="0" width="100" height="24" fill="#1f6feb" rx="12"/>
+    <text x="140" y="16" font-family="monospace" font-size="11" fill="#fff" text-anchor="middle">⚡ Rate Limit</text>
+    
+    <rect x="200" y="0" width="90" height="24" fill="#8957e5" rx="12"/>
+    <text x="245" y="16" font-family="monospace" font-size="11" fill="#fff" text-anchor="middle">🔔 Webhooks</text>
+    
+    <rect x="300" y="0" width="80" height="24" fill="#da3633" rx="12"/>
+    <text x="340" y="16" font-family="monospace" font-size="11" fill="#fff" text-anchor="middle">🔒 Secure</text>
+  </g>
+  
+  <!-- Flying shuriken decorations -->
+  <g transform="translate(700, 40) rotate(15)">
+    <polygon points="15,0 18,12 30,15 18,18 15,30 12,18 0,15 12,12" fill="url(#goBlue2)" opacity="0.6"/>
+  </g>
+  <g transform="translate(730, 120) rotate(-10)">
+    <polygon points="10,0 12,8 20,10 12,12 10,20 8,12 0,10 8,8" fill="url(#ninjaOrange)" opacity="0.4"/>
+  </g>
+  
+  <!-- Invoice icon -->
+  <g transform="translate(680, 70)">
+    <rect x="0" y="0" width="50" height="65" fill="#fff" rx="4" opacity="0.9"/>
+    <rect x="8" y="10" width="30" height="3" fill="#ddd" rx="1"/>
+    <rect x="8" y="18" width="35" height="3" fill="#ddd" rx="1"/>
+    <rect x="8" y="26" width="25" height="3" fill="#ddd" rx="1"/>
+    <rect x="8" y="38" width="35" height="3" fill="url(#goBlue2)" rx="1"/>
+    <rect x="8" y="46" width="30" height="3" fill="url(#goBlue2)" rx="1"/>
+    <text x="25" y="60" font-family="monospace" font-size="8" fill="url(#ninjaOrange)" text-anchor="middle">$99</text>
+  </g>
+</svg>
