@@ -1,0 +1,89 @@
+name: Documentation Issue
+description: Report missing, incorrect, or unclear documentation
+title: "[Docs]: "
+labels: ["documentation", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve our documentation! Please fill out this form as completely as possible.
+  
+  - type: dropdown
+    id: doc-type
+    attributes:
+      label: Documentation Type
+      description: What type of documentation issue is this?
+      options:
+        - Missing documentation
+        - Incorrect/outdated documentation
+        - Unclear documentation
+        - Typo or formatting issue
+        - Code example issue
+        - API reference issue
+    validations:
+      required: true
+  
+  - type: input
+    id: location
+    attributes:
+      label: Documentation Location
+      description: Where is the documentation issue located?
+      placeholder: e.g., README.md, docs/getting-started.md, code comments in client.go
+    validations:
+      required: true
+  
+  - type: textarea
+    id: current
+    attributes:
+      label: Current Documentation
+      description: What does the current documentation say (if anything)?
+      placeholder: Quote or describe the current documentation
+    validations:
+      required: false
+  
+  - type: textarea
+    id: issue
+    attributes:
+      label: What's the issue?
+      description: Describe what's missing, incorrect, or unclear
+      placeholder: The documentation doesn't explain...
+    validations:
+      required: true
+  
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggested Improvement
+      description: How would you improve this documentation?
+      placeholder: It should explain that...
+    validations:
+      required: false
+  
+  - type: textarea
+    id: example
+    attributes:
+      label: Code Example
+      description: If applicable, provide a code example that demonstrates the issue or suggested improvement
+      render: go
+    validations:
+      required: false
+  
+  - type: dropdown
+    id: contribution
+    attributes:
+      label: Are you willing to contribute?
+      description: Would you be interested in submitting a pull request to fix this documentation issue?
+      options:
+        - "Yes, I'd like to contribute"
+        - "Maybe, with guidance"
+        - "No"
+    validations:
+      required: false
+  
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description: Add any other context about the documentation issue here.
+    validations:
+      required: false
