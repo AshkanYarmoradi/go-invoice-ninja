@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 Discussion Forum
+    url: https://github.com/AshkanYarmoradi/go-invoice-ninja/discussions
+    about: Ask questions and discuss ideas with the community
+  - name: 📖 Documentation
+    url: https://github.com/AshkanYarmoradi/go-invoice-ninja/tree/main/docs
+    about: Read the SDK documentation
+  - name: 🔧 Invoice Ninja Support
+    url: https://invoiceninja.github.io/en/
+    about: For issues with Invoice Ninja itself (not this SDK)
