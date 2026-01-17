@@ -325,3 +325,83 @@ func TestClientListOptionsNilToQuery(t *testing.T) {
 		t.Error("expected nil query for nil options")
 	}
 }
+
+func TestClientsServiceSwitchToClientPortal(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" {
+			t.Errorf("expected POST method, got %s", r.Method)
+		}
+		if r.URL.Path != "/api/v1/client_portal/client123/switch_company" {
+			t.Errorf("expected path /api/v1/client_portal/client123/switch_company, got %s", r.URL.Path)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"url": "https://example.invoicing.co/client/portal/abc123xyz",
+		})
+	}))
+	defer server.Close()
+
+	client := NewClient("test-token", WithBaseURL(server.URL))
+
+	resp, err := client.Clients.SwitchToClientPortal(context.Background(), "client123", "")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if resp.URL != "https://example.invoicing.co/client/portal/abc123xyz" {
+		t.Errorf("expected URL to be magic link, got '%s'", resp.URL)
+	}
+}
+
+func TestClientsServiceSwitchToClientPortalWithContact(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" {
+			t.Errorf("expected POST method, got %s", r.Method)
+		}
+		if r.URL.Path != "/api/v1/client_portal/client123/switch_company" {
+			t.Errorf("expected path /api/v1/client_portal/client123/switch_company, got %s", r.URL.Path)
+		}
+		if r.URL.Query().Get("contact_id") != "contact456" {
+			t.Errorf("expected contact_id=contact456, got %s", r.URL.Query().Get("contact_id"))
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"url": "https://example.invoicing.co/client/portal/def456abc",
+		})
+	}))
+	defer server.Close()
+
+	client := NewClient("test-token", WithBaseURL(server.URL))
+
+	resp, err := client.Clients.SwitchToClientPortal(context.Background(), "client123", "contact456")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if resp.URL != "https://example.invoicing.co/client/portal/def456abc" {
+		t.Errorf("expected URL to be magic link, got '%s'", resp.URL)
+	}
+}
+
+func TestClientsServiceGetClientPortalURL(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"url": "https://example.invoicing.co/client/portal/primary123",
+		})
+	}))
+	defer server.Close()
+
+	client := NewClient("test-token", WithBaseURL(server.URL))
+
+	resp, err := client.Clients.GetClientPortalURL(context.Background(), "client123")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if resp.URL == "" {
+		t.Error("expected non-empty URL")
+	}
+}

@@ -204,3 +204,42 @@ func (s *ClientsService) GetStatement(ctx context.Context, req *StatementRequest
 	// This would need special handling for PDF response
 	return nil, fmt.Errorf("not implemented - use client.Request with custom handling")
 }
+
+// ClientPortalSwitchRequest represents a request to switch to client portal.
+type ClientPortalSwitchRequest struct {
+	// ContactID is the ID of the contact to generate the portal link for.
+	// If empty, the primary contact will be used.
+	ContactID string `json:"contact_id,omitempty"`
+}
+
+// ClientPortalSwitchResponse represents the response from switching to client portal.
+type ClientPortalSwitchResponse struct {
+	// URL is the client portal URL that can be used to access the portal.
+	URL string `json:"url"`
+}
+
+// SwitchToClientPortal generates a magic link URL for client portal access.
+// The link allows the client to access their portal without password authentication.
+// The contactID parameter is optional; if empty, the primary contact is used.
+func (s *ClientsService) SwitchToClientPortal(ctx context.Context, clientID string, contactID string) (*ClientPortalSwitchResponse, error) {
+	path := fmt.Sprintf("/api/v1/client_portal/%s/switch_company", clientID)
+
+	// Add contact_id as query parameter if specified
+	var query url.Values
+	if contactID != "" {
+		query = url.Values{}
+		query.Set("contact_id", contactID)
+	}
+
+	var resp ClientPortalSwitchResponse
+	if err := s.client.doRequest(ctx, "POST", path, query, nil, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// GetClientPortalURL generates a client portal access URL for a contact.
+// This is a convenience wrapper around SwitchToClientPortal.
+func (s *ClientsService) GetClientPortalURL(ctx context.Context, clientID string) (*ClientPortalSwitchResponse, error) {
+	return s.SwitchToClientPortal(ctx, clientID, "")
+}
