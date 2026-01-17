@@ -181,6 +181,7 @@ type ClientContact struct {
 	Email        string `json:"email,omitempty"`
 	Phone        string `json:"phone,omitempty"`
 	IsPrimary    bool   `json:"is_primary,omitempty"`
+	ContactKey   string `json:"contact_key,omitempty"`
 	CustomValue1 string `json:"custom_value1,omitempty"`
 	CustomValue2 string `json:"custom_value2,omitempty"`
 	CustomValue3 string `json:"custom_value3,omitempty"`
