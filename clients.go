@@ -221,21 +221,57 @@ type ClientPortalSwitchResponse struct {
 // SwitchToClientPortal generates a magic link URL for client portal access.
 // The link allows the client to access their portal without password authentication.
 // The contactID parameter is optional; if empty, the primary contact is used.
+//
+// This method fetches the client to get the contact_key, then constructs the portal URL
+// using the pattern: {baseURL}/client/key_login/{contact_key}
 func (s *ClientsService) SwitchToClientPortal(ctx context.Context, clientID string, contactID string) (*ClientPortalSwitchResponse, error) {
-	path := fmt.Sprintf("/api/v1/client_portal/%s/switch_company", clientID)
+	// Fetch the client with contacts to get contact keys
+	client, err := s.Get(ctx, clientID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get client: %w", err)
+	}
 
-	// Add contact_id as query parameter if specified
-	var query url.Values
+	if len(client.Contacts) == 0 {
+		return nil, fmt.Errorf("client has no contacts")
+	}
+
+	// Find the appropriate contact
+	var contact *ClientContact
 	if contactID != "" {
-		query = url.Values{}
-		query.Set("contact_id", contactID)
+		// Find specific contact by ID
+		for i := range client.Contacts {
+			if client.Contacts[i].ID == contactID {
+				contact = &client.Contacts[i]
+				break
+			}
+		}
+		if contact == nil {
+			return nil, fmt.Errorf("contact with ID %s not found", contactID)
+		}
+	} else {
+		// Use primary contact, or first contact if none is marked primary
+		for i := range client.Contacts {
+			if client.Contacts[i].IsPrimary {
+				contact = &client.Contacts[i]
+				break
+			}
+		}
+		if contact == nil {
+			contact = &client.Contacts[0]
+		}
 	}
 
-	var resp ClientPortalSwitchResponse
-	if err := s.client.doRequest(ctx, "POST", path, query, nil, &resp); err != nil {
-		return nil, err
+	if contact.ContactKey == "" {
+		return nil, fmt.Errorf("contact has no contact_key - portal access may be disabled")
 	}
-	return &resp, nil
+
+	// Construct the portal URL using the contact key
+	// Format: {baseURL}/client/key_login/{contact_key}
+	portalURL := fmt.Sprintf("%s/client/key_login/%s", s.client.baseURL, contact.ContactKey)
+
+	return &ClientPortalSwitchResponse{
+		URL: portalURL,
+	}, nil
 }
 
 // GetClientPortalURL generates a client portal access URL for a contact.

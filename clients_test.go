@@ -328,16 +328,29 @@ func TestClientListOptionsNilToQuery(t *testing.T) {
 
 func TestClientsServiceSwitchToClientPortal(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "POST" {
-			t.Errorf("expected POST method, got %s", r.Method)
+		if r.Method != "GET" {
+			t.Errorf("expected GET method, got %s", r.Method)
 		}
-		if r.URL.Path != "/api/v1/client_portal/client123/switch_company" {
-			t.Errorf("expected path /api/v1/client_portal/client123/switch_company, got %s", r.URL.Path)
+		if r.URL.Path != "/api/v1/clients/client123" {
+			t.Errorf("expected path /api/v1/clients/client123, got %s", r.URL.Path)
 		}
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
-			"url": "https://example.invoicing.co/client/portal/abc123xyz",
+			"data": map[string]interface{}{
+				"id":   "client123",
+				"name": "Test Client",
+				"contacts": []map[string]interface{}{
+					{
+						"id":          "contact1",
+						"first_name":  "John",
+						"last_name":   "Doe",
+						"email":       "john@example.com",
+						"is_primary":  true,
+						"contact_key": "abc123xyz",
+					},
+				},
+			},
 		})
 	}))
 	defer server.Close()
@@ -349,26 +362,45 @@ func TestClientsServiceSwitchToClientPortal(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if resp.URL != "https://example.invoicing.co/client/portal/abc123xyz" {
-		t.Errorf("expected URL to be magic link, got '%s'", resp.URL)
+	expectedURL := server.URL + "/client/key_login/abc123xyz"
+	if resp.URL != expectedURL {
+		t.Errorf("expected URL to be %s, got '%s'", expectedURL, resp.URL)
 	}
 }
 
 func TestClientsServiceSwitchToClientPortalWithContact(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "POST" {
-			t.Errorf("expected POST method, got %s", r.Method)
+		if r.Method != "GET" {
+			t.Errorf("expected GET method, got %s", r.Method)
 		}
-		if r.URL.Path != "/api/v1/client_portal/client123/switch_company" {
-			t.Errorf("expected path /api/v1/client_portal/client123/switch_company, got %s", r.URL.Path)
-		}
-		if r.URL.Query().Get("contact_id") != "contact456" {
-			t.Errorf("expected contact_id=contact456, got %s", r.URL.Query().Get("contact_id"))
+		if r.URL.Path != "/api/v1/clients/client123" {
+			t.Errorf("expected path /api/v1/clients/client123, got %s", r.URL.Path)
 		}
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
-			"url": "https://example.invoicing.co/client/portal/def456abc",
+			"data": map[string]interface{}{
+				"id":   "client123",
+				"name": "Test Client",
+				"contacts": []map[string]interface{}{
+					{
+						"id":          "contact1",
+						"first_name":  "John",
+						"last_name":   "Doe",
+						"email":       "john@example.com",
+						"is_primary":  true,
+						"contact_key": "primary_key_123",
+					},
+					{
+						"id":          "contact456",
+						"first_name":  "Jane",
+						"last_name":   "Doe",
+						"email":       "jane@example.com",
+						"is_primary":  false,
+						"contact_key": "def456abc",
+					},
+				},
+			},
 		})
 	}))
 	defer server.Close()
@@ -380,8 +412,99 @@ func TestClientsServiceSwitchToClientPortalWithContact(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if resp.URL != "https://example.invoicing.co/client/portal/def456abc" {
-		t.Errorf("expected URL to be magic link, got '%s'", resp.URL)
+	expectedURL := server.URL + "/client/key_login/def456abc"
+	if resp.URL != expectedURL {
+		t.Errorf("expected URL to be %s, got '%s'", expectedURL, resp.URL)
+	}
+}
+
+func TestClientsServiceSwitchToClientPortal_NoContacts(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"data": map[string]interface{}{
+				"id":       "client123",
+				"name":     "Test Client",
+				"contacts": []map[string]interface{}{},
+			},
+		})
+	}))
+	defer server.Close()
+
+	client := NewClient("test-token", WithBaseURL(server.URL))
+
+	_, err := client.Clients.SwitchToClientPortal(context.Background(), "client123", "")
+	if err == nil {
+		t.Error("expected error for client with no contacts")
+	}
+	if err.Error() != "client has no contacts" {
+		t.Errorf("unexpected error message: %v", err)
+	}
+}
+
+func TestClientsServiceSwitchToClientPortal_ContactNotFound(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"data": map[string]interface{}{
+				"id":   "client123",
+				"name": "Test Client",
+				"contacts": []map[string]interface{}{
+					{
+						"id":          "contact1",
+						"first_name":  "John",
+						"last_name":   "Doe",
+						"email":       "john@example.com",
+						"is_primary":  true,
+						"contact_key": "abc123xyz",
+					},
+				},
+			},
+		})
+	}))
+	defer server.Close()
+
+	client := NewClient("test-token", WithBaseURL(server.URL))
+
+	_, err := client.Clients.SwitchToClientPortal(context.Background(), "client123", "nonexistent")
+	if err == nil {
+		t.Error("expected error for nonexistent contact ID")
+	}
+	if err.Error() != "contact with ID nonexistent not found" {
+		t.Errorf("unexpected error message: %v", err)
+	}
+}
+
+func TestClientsServiceSwitchToClientPortal_NoContactKey(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"data": map[string]interface{}{
+				"id":   "client123",
+				"name": "Test Client",
+				"contacts": []map[string]interface{}{
+					{
+						"id":         "contact1",
+						"first_name": "John",
+						"last_name":  "Doe",
+						"email":      "john@example.com",
+						"is_primary": true,
+						// contact_key is missing
+					},
+				},
+			},
+		})
+	}))
+	defer server.Close()
+
+	client := NewClient("test-token", WithBaseURL(server.URL))
+
+	_, err := client.Clients.SwitchToClientPortal(context.Background(), "client123", "")
+	if err == nil {
+		t.Error("expected error for contact with no contact_key")
+	}
+	if err.Error() != "contact has no contact_key - portal access may be disabled" {
+		t.Errorf("unexpected error message: %v", err)
 	}
 }
 
@@ -389,7 +512,20 @@ func TestClientsServiceGetClientPortalURL(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
-			"url": "https://example.invoicing.co/client/portal/primary123",
+			"data": map[string]interface{}{
+				"id":   "client123",
+				"name": "Test Client",
+				"contacts": []map[string]interface{}{
+					{
+						"id":          "contact1",
+						"first_name":  "John",
+						"last_name":   "Doe",
+						"email":       "john@example.com",
+						"is_primary":  true,
+						"contact_key": "primary123",
+					},
+				},
+			},
 		})
 	}))
 	defer server.Close()
@@ -401,7 +537,8 @@ func TestClientsServiceGetClientPortalURL(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if resp.URL == "" {
-		t.Error("expected non-empty URL")
+	expectedURL := server.URL + "/client/key_login/primary123"
+	if resp.URL != expectedURL {
+		t.Errorf("expected URL to be %s, got '%s'", expectedURL, resp.URL)
 	}
 }
