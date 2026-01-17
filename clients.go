@@ -223,7 +223,7 @@ type ClientPortalSwitchResponse struct {
 // The contactID parameter is optional; if empty, the primary contact is used.
 //
 // This method fetches the client to get the contact_key, then constructs the portal URL
-// using the pattern: {baseURL}/client/key_login/{contact_key}
+// using the pattern: {baseURL}/client/key_login/{contact_key}.
 func (s *ClientsService) SwitchToClientPortal(ctx context.Context, clientID string, contactID string) (*ClientPortalSwitchResponse, error) {
 	// Fetch the client with contacts to get contact keys
 	client, err := s.Get(ctx, clientID)
