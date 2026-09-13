@@ -17,6 +17,16 @@
 //	// List payments
 //	payments, err := client.Payments.List(ctx, nil)
 //
+// # Rate Limiting and Retries
+//
+// Rate limiting and automatic retries are off by default. Enable them with
+// WithRateLimiter and WithRetryConfig, or use NewRateLimitedClient:
+//
+//	client := invoiceninja.NewClient("your-api-token",
+//		invoiceninja.WithRateLimiter(invoiceninja.NewRateLimiter(10)),
+//		invoiceninja.WithRetryConfig(invoiceninja.DefaultRetryConfig()),
+//	)
+//
 // # Generic Requests
 //
 // For endpoints not covered by specialized methods, use the generic request:
@@ -34,6 +44,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -62,6 +73,21 @@ type Client struct {
 	// apiToken is the API authentication token.
 	apiToken string
 
+	// timeout is the request timeout set with WithTimeout.
+	timeout time.Duration
+
+	// hasTimeout reports whether WithTimeout was used.
+	hasTimeout bool
+
+	// mu guards rateLimiter and retryConfig.
+	mu sync.RWMutex
+
+	// rateLimiter limits outgoing requests. Nil means no rate limiting.
+	rateLimiter *RateLimiter
+
+	// retryConfig controls automatic retries. Nil means no retries.
+	retryConfig *RetryConfig
+
 	// Payments provides access to payment-related endpoints.
 	Payments *PaymentsService
 
@@ -87,10 +113,12 @@ type Client struct {
 // ClientOption is a function that configures a Client.
 type ClientOption func(*Client)
 
-// WithHTTPClient sets a custom HTTP client.
+// WithHTTPClient sets a custom HTTP client. A nil client is ignored.
 func WithHTTPClient(httpClient *http.Client) ClientOption {
 	return func(c *Client) {
-		c.httpClient = httpClient
+		if httpClient != nil {
+			c.httpClient = httpClient
+		}
 	}
 }
 
@@ -101,25 +129,57 @@ func WithBaseURL(baseURL string) ClientOption {
 	}
 }
 
-// WithTimeout sets a custom timeout for the HTTP client.
+// WithTimeout sets a custom timeout for HTTP requests.
+//
+// The timeout is applied after all other options, so the order of WithTimeout and
+// WithHTTPClient does not matter. An *http.Client passed to WithHTTPClient is not
+// modified; the client uses a copy of it with the new timeout.
 func WithTimeout(timeout time.Duration) ClientOption {
 	return func(c *Client) {
-		c.httpClient.Timeout = timeout
+		c.timeout = timeout
+		c.hasTimeout = true
+	}
+}
+
+// WithRateLimiter limits how many requests per second the client sends.
+// Every service method and generic request waits for the limiter.
+func WithRateLimiter(limiter *RateLimiter) ClientOption {
+	return func(c *Client) {
+		c.rateLimiter = limiter
+	}
+}
+
+// WithRetryConfig enables automatic retries of failed requests.
+// See RetryConfig for which requests are retried.
+func WithRetryConfig(config *RetryConfig) ClientOption {
+	return func(c *Client) {
+		c.retryConfig = config
 	}
 }
 
 // NewClient creates a new Invoice Ninja API client.
 func NewClient(apiToken string, opts ...ClientOption) *Client {
+	defaultHTTPClient := &http.Client{
+		Timeout: DefaultTimeout,
+	}
+
 	c := &Client{
-		httpClient: &http.Client{
-			Timeout: DefaultTimeout,
-		},
-		baseURL:  DefaultBaseURL,
-		apiToken: apiToken,
+		httpClient: defaultHTTPClient,
+		baseURL:    DefaultBaseURL,
+		apiToken:   apiToken,
 	}
 
 	for _, opt := range opts {
 		opt(c)
+	}
+
+	if c.hasTimeout {
+		if c.httpClient != defaultHTTPClient {
+			// Copy the caller's HTTP client so its timeout is not changed.
+			httpClient := *c.httpClient
+			c.httpClient = &httpClient
+		}
+		c.httpClient.Timeout = c.timeout
 	}
 
 	// Initialize services
@@ -150,7 +210,19 @@ func (c *Client) RequestWithQuery(ctx context.Context, method, path string, quer
 	return c.doRequest(ctx, method, path, query, body, result)
 }
 
-// doRequest performs the actual HTTP request.
+// jsonMediaType is the media type of JSON request and response bodies.
+const jsonMediaType = "application/json"
+
+// apiRequest describes an HTTP request. The body is kept as bytes so the request can be retried.
+type apiRequest struct {
+	method      string
+	url         string
+	body        []byte
+	contentType string
+	accept      string
+}
+
+// doRequest performs a JSON API request.
 func (c *Client) doRequest(ctx context.Context, method, path string, query url.Values, body, result interface{}) error {
 	// Build URL
 	u, err := url.Parse(c.baseURL + path)
@@ -161,45 +233,25 @@ func (c *Client) doRequest(ctx context.Context, method, path string, query url.V
 		u.RawQuery = query.Encode()
 	}
 
+	req := &apiRequest{
+		method:      method,
+		url:         u.String(),
+		contentType: jsonMediaType,
+		accept:      jsonMediaType,
+	}
+
 	// Prepare request body
-	var bodyReader io.Reader
 	if body != nil {
 		jsonBody, marshalErr := json.Marshal(body)
 		if marshalErr != nil {
 			return fmt.Errorf("failed to marshal request body: %w", marshalErr)
 		}
-		bodyReader = bytes.NewReader(jsonBody)
+		req.body = jsonBody
 	}
 
-	// Create request
-	req, err := http.NewRequestWithContext(ctx, method, u.String(), bodyReader)
+	respBody, err := c.execute(ctx, req)
 	if err != nil {
-		return fmt.Errorf("failed to create request: %w", err)
-	}
-
-	// Set headers
-	req.Header.Set("X-API-TOKEN", c.apiToken)
-	req.Header.Set("X-Requested-With", "XMLHttpRequest")
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("User-Agent", "go-invoice-ninja/"+Version)
-
-	// Execute request
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("request failed: %w", err)
-	}
-	defer resp.Body.Close()
-
-	// Read response body
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("failed to read response body: %w", err)
-	}
-
-	// Check for errors
-	if resp.StatusCode >= 400 {
-		return parseAPIError(resp.StatusCode, respBody)
+		return err
 	}
 
 	// Parse response
@@ -210,4 +262,89 @@ func (c *Client) doRequest(ctx context.Context, method, path string, query url.V
 	}
 
 	return nil
+}
+
+// execute sends req and returns the response body. Before each attempt it waits for
+// the client's rate limiter, and it retries failed attempts according to the client's
+// retry configuration.
+func (c *Client) execute(ctx context.Context, req *apiRequest) ([]byte, error) {
+	limiter, retryConfig := c.requestPolicy()
+
+	for attempt := 0; ; attempt++ {
+		if limiter != nil {
+			if waitErr := limiter.Wait(ctx); waitErr != nil {
+				return nil, waitErr
+			}
+		}
+
+		respBody, err := c.send(ctx, req)
+		if err == nil {
+			return respBody, nil
+		}
+
+		if ctx.Err() != nil || !retryConfig.shouldRetry(req.method, err, attempt) {
+			return nil, err
+		}
+
+		backoff, ok := retryConfig.calculateBackoff(attempt, err)
+		if !ok {
+			return nil, err
+		}
+
+		if sleepErr := sleepContext(ctx, backoff); sleepErr != nil {
+			return nil, sleepErr
+		}
+	}
+}
+
+// send performs a single HTTP request and returns the response body.
+func (c *Client) send(ctx context.Context, req *apiRequest) ([]byte, error) {
+	var bodyReader io.Reader
+	if req.body != nil {
+		bodyReader = bytes.NewReader(req.body)
+	}
+
+	httpReq, err := http.NewRequestWithContext(ctx, req.method, req.url, bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	// Set headers
+	httpReq.Header.Set("X-API-TOKEN", c.apiToken)
+	httpReq.Header.Set("X-Requested-With", "XMLHttpRequest")
+	if req.contentType != "" {
+		httpReq.Header.Set("Content-Type", req.contentType)
+	}
+	httpReq.Header.Set("Accept", req.accept)
+	httpReq.Header.Set("User-Agent", "go-invoice-ninja/"+Version)
+
+	// Execute request
+	resp, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		return nil, &networkError{op: "request failed", err: err}
+	}
+	defer resp.Body.Close()
+
+	// Read response body
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, &networkError{op: "failed to read response body", err: err}
+	}
+
+	// Check for errors
+	if resp.StatusCode >= 400 {
+		apiErr := parseAPIError(resp.StatusCode, respBody)
+		apiErr.Headers = resp.Header
+		return nil, apiErr
+	}
+
+	return respBody, nil
+}
+
+// requestPolicy returns the rate limiter and retry configuration used for requests.
+func (c *Client) requestPolicy() (*RateLimiter, *RetryConfig) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	return c.rateLimiter, c.retryConfig
 }

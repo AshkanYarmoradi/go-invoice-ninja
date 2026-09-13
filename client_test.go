@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
+	"time"
 )
 
 func TestNewClient(t *testing.T) {
@@ -46,6 +48,54 @@ func TestSetBaseURL(t *testing.T) {
 	// Should trim trailing slash
 	if client.baseURL != "https://custom.example.com" {
 		t.Errorf("expected baseURL to be 'https://custom.example.com', got '%s'", client.baseURL)
+	}
+}
+
+func TestWithTimeout(t *testing.T) {
+	client := NewClient("test-token", WithTimeout(5*time.Second))
+
+	if client.httpClient.Timeout != 5*time.Second {
+		t.Errorf("expected timeout to be 5s, got %v", client.httpClient.Timeout)
+	}
+}
+
+func TestWithTimeoutBeforeWithHTTPClient(t *testing.T) {
+	customHTTP := &http.Client{}
+
+	client := NewClient("test-token", WithTimeout(5*time.Second), WithHTTPClient(customHTTP))
+
+	if client.httpClient.Timeout != 5*time.Second {
+		t.Errorf("expected timeout to be 5s, got %v", client.httpClient.Timeout)
+	}
+
+	if customHTTP.Timeout != 0 {
+		t.Errorf("expected custom HTTP client not to be modified, got timeout %v", customHTTP.Timeout)
+	}
+}
+
+func TestWithTimeoutDoesNotModifyCustomHTTPClient(t *testing.T) {
+	customHTTP := &http.Client{Timeout: time.Minute}
+
+	client := NewClient("test-token", WithHTTPClient(customHTTP), WithTimeout(5*time.Second))
+
+	if client.httpClient.Timeout != 5*time.Second {
+		t.Errorf("expected timeout to be 5s, got %v", client.httpClient.Timeout)
+	}
+
+	if customHTTP.Timeout != time.Minute {
+		t.Errorf("expected custom HTTP client timeout to stay 1m, got %v", customHTTP.Timeout)
+	}
+}
+
+func TestWithHTTPClientNil(t *testing.T) {
+	client := NewClient("test-token", WithHTTPClient(nil))
+
+	if client.httpClient == nil {
+		t.Fatal("expected the default HTTP client to be kept")
+	}
+
+	if client.httpClient.Timeout != DefaultTimeout {
+		t.Errorf("expected default timeout, got %v", client.httpClient.Timeout)
 	}
 }
 
@@ -107,6 +157,48 @@ func TestClientRequestError(t *testing.T) {
 
 	if !apiErr.IsUnauthorized() {
 		t.Errorf("expected IsUnauthorized to be true")
+	}
+}
+
+func TestClientRequestErrorHeaders(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Retry-After", "30")
+		w.WriteHeader(http.StatusTooManyRequests)
+	}))
+	defer server.Close()
+
+	client := NewClient("test-token", WithBaseURL(server.URL))
+
+	err := client.Request(context.Background(), "GET", "/test", nil, nil)
+
+	apiErr, ok := IsAPIError(err)
+	if !ok {
+		t.Fatalf("expected APIError, got %T", err)
+	}
+
+	if apiErr.Headers.Get("Retry-After") != "30" {
+		t.Errorf("expected Retry-After header to be '30', got '%s'", apiErr.Headers.Get("Retry-After"))
+	}
+}
+
+func TestClientRequestNetworkError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	serverURL := server.URL
+	server.Close()
+
+	client := NewClient("test-token", WithBaseURL(serverURL))
+
+	err := client.Request(context.Background(), "GET", "/test", nil, nil)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	if !strings.HasPrefix(err.Error(), "request failed: ") {
+		t.Errorf("expected error to start with 'request failed: ', got '%v'", err)
+	}
+
+	if _, ok := IsAPIError(err); ok {
+		t.Error("expected network error not to be an APIError")
 	}
 }
 

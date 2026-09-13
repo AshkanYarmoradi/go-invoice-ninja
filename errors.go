@@ -17,6 +17,9 @@ type APIError struct {
 
 	// Errors contains field-specific validation errors.
 	Errors map[string][]string `json:"errors,omitempty"`
+
+	// Headers contains the HTTP response headers, such as Retry-After on 429 responses.
+	Headers http.Header `json:"-"`
 }
 
 // Error implements the error interface.
@@ -107,4 +110,20 @@ func IsAPIError(err error) (*APIError, bool) {
 		return apiErr, true
 	}
 	return nil, false
+}
+
+// networkError is returned when a request could not be sent or its response could not be read.
+type networkError struct {
+	op  string
+	err error
+}
+
+// Error implements the error interface.
+func (e *networkError) Error() string {
+	return e.op + ": " + e.err.Error()
+}
+
+// Unwrap returns the underlying error.
+func (e *networkError) Unwrap() error {
+	return e.err
 }

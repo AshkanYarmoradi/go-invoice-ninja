@@ -7,7 +7,10 @@ This document provides a detailed reference for all available SDK methods.
 ### Creating a Client
 
 ```go
-client := invoiceninja.NewClient(apiToken string, opts ...Option)
+client := invoiceninja.NewClient(apiToken string, opts ...ClientOption)
+
+// With rate limiting (10 requests per second) and DefaultRetryConfig() enabled
+client := invoiceninja.NewRateLimitedClient(apiToken string, opts ...ClientOption)
 ```
 
 ### Options
@@ -16,9 +19,9 @@ client := invoiceninja.NewClient(apiToken string, opts ...Option)
 |--------|-------------|
 | `WithBaseURL(url)` | Set custom base URL |
 | `WithHTTPClient(client)` | Use custom HTTP client |
-| `WithTimeout(duration)` | Set request timeout |
-| `WithRateLimiter(limiter)` | Enable rate limiting |
-| `WithRetryConfig(config)` | Configure retry behavior |
+| `WithTimeout(duration)` | Set request timeout (a client passed to `WithHTTPClient` is not modified) |
+| `WithRateLimiter(limiter)` | Limit requests per second, e.g. `NewRateLimiter(10)` |
+| `WithRetryConfig(config)` | Retry failed requests, e.g. `DefaultRetryConfig()` (see [Error Handling](error-handling.md#retry-configuration)) |
 
 ---
 

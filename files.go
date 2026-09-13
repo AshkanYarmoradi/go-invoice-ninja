@@ -38,27 +38,11 @@ func (s *DownloadsService) DownloadQuotePDF(ctx context.Context, invitationKey s
 
 // downloadFile performs a file download request.
 func (s *DownloadsService) downloadFile(ctx context.Context, path string) ([]byte, error) {
-	req, err := http.NewRequestWithContext(ctx, "GET", s.client.baseURL+path, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
-	}
-
-	req.Header.Set("X-API-TOKEN", s.client.apiToken)
-	req.Header.Set("X-Requested-With", "XMLHttpRequest")
-	req.Header.Set("Accept", "application/pdf")
-
-	resp, err := s.client.httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("request failed: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode >= 400 {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, parseAPIError(resp.StatusCode, body)
-	}
-
-	return io.ReadAll(resp.Body)
+	return s.client.execute(ctx, &apiRequest{
+		method: http.MethodGet,
+		url:    s.client.baseURL + path,
+		accept: "application/pdf",
+	})
 }
 
 // UploadsService handles file upload operations.
@@ -131,25 +115,13 @@ func (s *UploadsService) uploadFromReader(ctx context.Context, path, filename st
 		return fmt.Errorf("failed to close multipart writer: %w", closeErr)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "POST", s.client.baseURL+path, &buf)
-	if err != nil {
-		return fmt.Errorf("failed to create request: %w", err)
-	}
+	_, err = s.client.execute(ctx, &apiRequest{
+		method:      http.MethodPost,
+		url:         s.client.baseURL + path,
+		body:        buf.Bytes(),
+		contentType: writer.FormDataContentType(),
+		accept:      jsonMediaType,
+	})
 
-	req.Header.Set("X-API-TOKEN", s.client.apiToken)
-	req.Header.Set("X-Requested-With", "XMLHttpRequest")
-	req.Header.Set("Content-Type", writer.FormDataContentType())
-
-	resp, err := s.client.httpClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("request failed: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode >= 400 {
-		body, _ := io.ReadAll(resp.Body)
-		return parseAPIError(resp.StatusCode, body)
-	}
-
-	return nil
+	return err
 }

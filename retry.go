@@ -3,26 +3,47 @@ package invoiceninja
 import (
 	"context"
 	"crypto/rand"
+	"errors"
+	"fmt"
 	"math"
 	"math/big"
 	"net/http"
+	"net/url"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
 
-// RetryConfig configures retry behavior for API requests.
+const (
+	// defaultRequestsPerSecond is the rate limit used by NewRateLimitedClient.
+	defaultRequestsPerSecond = 10
+
+	// maxJitterFraction is the largest fraction of the backoff added as random jitter.
+	maxJitterFraction = 0.3
+)
+
+// RetryConfig configures automatic retries for API requests.
+//
+// Requests that fail with a network error, or with a status code listed in
+// RetryOnStatusCodes, are retried up to MaxRetries times with exponential backoff.
+// POST and PATCH requests, such as creating a payment or emailing an invoice, are
+// only retried after a 429 response unless RetryNonIdempotent is set: after a network
+// or server error the server may already have processed them.
 type RetryConfig struct {
-	// MaxRetries is the maximum number of retry attempts.
+	// MaxRetries is the maximum number of retry attempts. Zero or less disables retries.
 	MaxRetries int
 
 	// InitialBackoff is the initial backoff duration.
 	InitialBackoff time.Duration
 
-	// MaxBackoff is the maximum backoff duration.
+	// MaxBackoff is the maximum backoff duration. Zero means no limit.
+	// If the Retry-After header of a 429 response asks for a longer wait,
+	// the error is returned instead of retrying.
 	MaxBackoff time.Duration
 
 	// BackoffMultiplier is the multiplier applied to backoff after each retry.
+	// Values of zero or less are treated as 1.
 	BackoffMultiplier float64
 
 	// RetryOnStatusCodes specifies which HTTP status codes should trigger a retry.
@@ -30,6 +51,10 @@ type RetryConfig struct {
 
 	// Jitter adds randomness to backoff to prevent thundering herd.
 	Jitter bool
+
+	// RetryNonIdempotent also retries POST and PATCH requests after network errors
+	// and server errors. Only enable it if repeating those requests is safe.
+	RetryNonIdempotent bool
 }
 
 // DefaultRetryConfig returns the default retry configuration.
@@ -44,6 +69,129 @@ func DefaultRetryConfig() *RetryConfig {
 	}
 }
 
+// shouldRetry reports whether a request with the given method that failed with err
+// on the given attempt (counting from 0) should be retried.
+func (rc *RetryConfig) shouldRetry(method string, err error, attempt int) bool {
+	if rc == nil || attempt >= rc.MaxRetries {
+		return false
+	}
+
+	var netErr *networkError
+	if errors.As(err, &netErr) {
+		return rc.RetryNonIdempotent || isIdempotent(method)
+	}
+
+	apiErr, ok := IsAPIError(err)
+	if !ok || !rc.retriesStatusCode(apiErr.StatusCode) {
+		return false
+	}
+
+	// A 429 response means the request was rejected without being processed.
+	if apiErr.StatusCode == http.StatusTooManyRequests {
+		return true
+	}
+
+	return rc.RetryNonIdempotent || isIdempotent(method)
+}
+
+// retriesStatusCode reports whether statusCode is listed in RetryOnStatusCodes.
+func (rc *RetryConfig) retriesStatusCode(statusCode int) bool {
+	for _, code := range rc.RetryOnStatusCodes {
+		if code == statusCode {
+			return true
+		}
+	}
+
+	return false
+}
+
+// calculateBackoff returns how long to wait before retrying a request that failed with
+// err on the given attempt. It returns false if the server asked for a longer wait
+// than MaxBackoff.
+func (rc *RetryConfig) calculateBackoff(attempt int, err error) (time.Duration, bool) {
+	// Honor the Retry-After header of 429 responses
+	if apiErr, ok := IsAPIError(err); ok && apiErr.StatusCode == http.StatusTooManyRequests {
+		if wait, found := parseRetryAfter(apiErr.Headers.Get("Retry-After"), time.Now()); found {
+			if rc.MaxBackoff > 0 && wait > rc.MaxBackoff {
+				return 0, false
+			}
+			return wait, true
+		}
+	}
+
+	multiplier := rc.BackoffMultiplier
+	if multiplier <= 0 {
+		multiplier = 1
+	}
+
+	// Exponential backoff
+	backoff := float64(rc.InitialBackoff) * math.Pow(multiplier, float64(attempt))
+
+	// Apply jitter
+	if rc.Jitter {
+		// Use crypto/rand for secure random number generation
+		randInt, randErr := rand.Int(rand.Reader, big.NewInt(1000))
+		if randErr == nil {
+			jitter := (float64(randInt.Int64()) / 1000.0) * maxJitterFraction * backoff
+			backoff += jitter
+		}
+	}
+
+	// Cap at max backoff
+	if rc.MaxBackoff > 0 && backoff > float64(rc.MaxBackoff) {
+		backoff = float64(rc.MaxBackoff)
+	}
+
+	return time.Duration(backoff), true
+}
+
+// isIdempotent reports whether a request with this HTTP method can safely be repeated.
+func isIdempotent(method string) bool {
+	switch strings.ToUpper(method) {
+	case http.MethodGet, http.MethodHead, http.MethodOptions, http.MethodTrace, http.MethodPut, http.MethodDelete:
+		return true
+	default:
+		return false
+	}
+}
+
+// parseRetryAfter parses a Retry-After header value, which is either a number of
+// seconds or an HTTP date.
+func parseRetryAfter(value string, now time.Time) (time.Duration, bool) {
+	if value == "" {
+		return 0, false
+	}
+
+	if seconds, err := strconv.Atoi(value); err == nil {
+		if seconds < 0 {
+			return 0, false
+		}
+		return time.Duration(seconds) * time.Second, true
+	}
+
+	if date, err := http.ParseTime(value); err == nil {
+		if wait := date.Sub(now); wait > 0 {
+			return wait, true
+		}
+		return 0, true
+	}
+
+	return 0, false
+}
+
+// sleepContext waits for the given duration or until ctx is done.
+func sleepContext(ctx context.Context, d time.Duration) error {
+	timer := time.NewTimer(d)
+	defer timer.Stop()
+
+	select {
+	case <-timer.C:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
 // RateLimiter implements client-side rate limiting.
 type RateLimiter struct {
 	mu            sync.Mutex
@@ -54,7 +202,12 @@ type RateLimiter struct {
 
 // NewRateLimiter creates a new rate limiter.
 // requestsPerSecond specifies the maximum requests per second allowed.
+// A value of zero or less disables rate limiting.
 func NewRateLimiter(requestsPerSecond int) *RateLimiter {
+	if requestsPerSecond < 0 {
+		requestsPerSecond = 0
+	}
+
 	return &RateLimiter{
 		requestsLimit: requestsPerSecond,
 		windowSize:    time.Second,
@@ -62,8 +215,12 @@ func NewRateLimiter(requestsPerSecond int) *RateLimiter {
 	}
 }
 
-// Wait blocks until a request is allowed under the rate limit.
+// Wait blocks until a request is allowed under the rate limit or ctx is done.
 func (r *RateLimiter) Wait(ctx context.Context) error {
+	if r.requestsLimit <= 0 {
+		return ctx.Err()
+	}
+
 	for {
 		r.mu.Lock()
 
@@ -81,145 +238,94 @@ func (r *RateLimiter) Wait(ctx context.Context) error {
 
 		// Check if we're at the limit
 		if len(r.requests) >= r.requestsLimit {
-			// Calculate wait time until the oldest request expires
-			oldestRequest := r.requests[0]
-			waitTime := oldestRequest.Add(r.windowSize).Sub(now)
+			// Wait until the oldest request expires
+			waitTime := r.requests[0].Add(r.windowSize).Sub(now)
 			r.mu.Unlock()
 
-			if waitTime > 0 {
-				select {
-				case <-time.After(waitTime):
-					// Retry the loop
-					continue
-				case <-ctx.Done():
-					return ctx.Err()
-				}
+			if err := sleepContext(ctx, waitTime); err != nil {
+				return err
 			}
 			continue
 		}
 
 		// Record this request and return
-		r.requests = append(r.requests, time.Now())
+		r.requests = append(r.requests, now)
 		r.mu.Unlock()
 		return nil
 	}
 }
 
-// RateLimitedClient wraps a Client with rate limiting and retry logic.
+// RateLimitedClient is a Client with rate limiting and automatic retries enabled.
+// Service methods (such as Payments.List) and generic requests all use them.
 type RateLimitedClient struct {
 	*Client
-	rateLimiter *RateLimiter
-	retryConfig *RetryConfig
 }
 
-// NewRateLimitedClient creates a new client with rate limiting and retry logic.
+// NewRateLimitedClient creates a client that sends at most 10 requests per second and
+// retries failed requests with DefaultRetryConfig. Pass WithRateLimiter or
+// WithRetryConfig to use other settings.
 func NewRateLimitedClient(apiToken string, opts ...ClientOption) *RateLimitedClient {
-	client := NewClient(apiToken, opts...)
+	// Defaults come first so that opts can override them.
+	options := make([]ClientOption, 0, 2+len(opts))
+	options = append(options,
+		WithRateLimiter(NewRateLimiter(defaultRequestsPerSecond)),
+		WithRetryConfig(DefaultRetryConfig()),
+	)
+	options = append(options, opts...)
+
 	return &RateLimitedClient{
-		Client:      client,
-		rateLimiter: NewRateLimiter(10), // Default: 10 requests per second
-		retryConfig: DefaultRetryConfig(),
+		Client: NewClient(apiToken, options...),
 	}
 }
 
 // SetRateLimit sets the rate limit for API requests.
+// A value of zero or less disables rate limiting.
 func (c *RateLimitedClient) SetRateLimit(requestsPerSecond int) {
-	c.rateLimiter = NewRateLimiter(requestsPerSecond)
+	limiter := NewRateLimiter(requestsPerSecond)
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.rateLimiter = limiter
 }
 
-// SetRetryConfig sets the retry configuration.
+// SetRetryConfig sets the retry configuration. A nil config disables retries.
 func (c *RateLimitedClient) SetRetryConfig(config *RetryConfig) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	c.retryConfig = config
 }
 
-// DoRequestWithRetry performs a request with rate limiting and retry logic.
-// This method provides automatic retries with exponential backoff for transient errors.
+// DoRequestWithRetry performs a generic API request with rate limiting and retries.
+// query may be nil, url.Values, map[string][]string or map[string]string.
 func (c *RateLimitedClient) DoRequestWithRetry(ctx context.Context, method, path string, query, body, result interface{}) error {
-	var lastErr error
-
-	for attempt := 0; attempt <= c.retryConfig.MaxRetries; attempt++ {
-		// Wait for rate limit
-		if err := c.rateLimiter.Wait(ctx); err != nil {
-			return err
-		}
-
-		// Make the request
-		err := c.Client.doRequest(ctx, method, path, nil, body, result)
-		if err == nil {
-			return nil
-		}
-
-		lastErr = err
-
-		// Check if we should retry
-		if !c.shouldRetry(err, attempt) {
-			return err
-		}
-
-		// Calculate backoff
-		backoff := c.calculateBackoff(attempt, err)
-
-		// Wait before retrying
-		select {
-		case <-time.After(backoff):
-		case <-ctx.Done():
-			return ctx.Err()
-		}
+	values, err := queryValues(query)
+	if err != nil {
+		return err
 	}
 
-	return lastErr
+	return c.doRequest(ctx, method, path, values, body, result)
 }
 
-// shouldRetry determines if a request should be retried.
-func (c *RateLimitedClient) shouldRetry(err error, attempt int) bool {
-	if attempt >= c.retryConfig.MaxRetries {
-		return false
-	}
-
-	apiErr, ok := IsAPIError(err)
-	if !ok {
-		// Network errors should be retried
-		return true
-	}
-
-	// Check if status code is in retry list
-	for _, code := range c.retryConfig.RetryOnStatusCodes {
-		if apiErr.StatusCode == code {
-			return true
+// queryValues converts the supported query parameter types to url.Values.
+func queryValues(query interface{}) (url.Values, error) {
+	switch q := query.(type) {
+	case nil:
+		return nil, nil
+	case url.Values:
+		return q, nil
+	case map[string][]string:
+		return url.Values(q), nil
+	case map[string]string:
+		values := make(url.Values, len(q))
+		for key, value := range q {
+			values.Set(key, value)
 		}
+		return values, nil
+	default:
+		return nil, fmt.Errorf("unsupported query type %T: use url.Values", query)
 	}
-
-	return false
-}
-
-// calculateBackoff calculates the backoff duration for a retry attempt.
-func (c *RateLimitedClient) calculateBackoff(attempt int, err error) time.Duration {
-	// Check for Retry-After header hint
-	if apiErr, ok := IsAPIError(err); ok && apiErr.StatusCode == http.StatusTooManyRequests {
-		// In a real implementation, we'd parse the Retry-After header
-		// For now, use a reasonable default for rate limiting
-		return 60 * time.Second
-	}
-
-	// Exponential backoff
-	backoff := float64(c.retryConfig.InitialBackoff) * math.Pow(c.retryConfig.BackoffMultiplier, float64(attempt))
-
-	// Apply jitter
-	if c.retryConfig.Jitter {
-		// Use crypto/rand for secure random number generation
-		randInt, randErr := rand.Int(rand.Reader, big.NewInt(1000))
-		if randErr == nil {
-			jitter := (float64(randInt.Int64()) / 1000.0) * 0.3 * backoff // Up to 30% jitter
-			backoff += jitter
-		}
-	}
-
-	// Cap at max backoff
-	if backoff > float64(c.retryConfig.MaxBackoff) {
-		backoff = float64(c.retryConfig.MaxBackoff)
-	}
-
-	return time.Duration(backoff)
 }
 
 // RateLimitInfo contains rate limit information from API response headers.
@@ -234,7 +340,8 @@ type RateLimitInfo struct {
 	Reset time.Time
 }
 
-// ParseRateLimitHeaders parses rate limit information from HTTP response headers.
+// ParseRateLimitHeaders parses rate limit information from HTTP response headers,
+// such as APIError.Headers.
 func ParseRateLimitHeaders(headers http.Header) *RateLimitInfo {
 	info := &RateLimitInfo{}
 

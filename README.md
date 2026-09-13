@@ -390,17 +390,26 @@ Supported webhook events:
 
 ## Rate Limiting & Retry
 
-For production use, use the rate-limited client with automatic retries:
+Rate limiting and automatic retries are off by default. Turn them on with client options:
+
+```go
+client := invoiceninja.NewClient("your-api-token",
+    invoiceninja.WithRateLimiter(invoiceninja.NewRateLimiter(10)), // 10 requests per second
+    invoiceninja.WithRetryConfig(invoiceninja.DefaultRetryConfig()),
+)
+```
+
+Or use the rate-limited client, which starts with 10 requests per second and `DefaultRetryConfig()`:
 
 ```go
 // Create a rate-limited client
 client := invoiceninja.NewRateLimitedClient("your-api-token",
     invoiceninja.WithBaseURL("https://your-instance.com"))
 
-// Configure rate limit (requests per second)
-client.SetRateLimit(10)
+// Change the rate limit (requests per second)
+client.SetRateLimit(5)
 
-// Configure retry behavior
+// Change the retry behavior
 client.SetRetryConfig(&invoiceninja.RetryConfig{
     MaxRetries:         3,
     InitialBackoff:     1 * time.Second,
@@ -409,7 +418,15 @@ client.SetRetryConfig(&invoiceninja.RetryConfig{
     RetryOnStatusCodes: []int{429, 500, 502, 503, 504},
     Jitter:             true,
 })
+
+// Service methods and generic requests use the rate limiter and retries
+payments, err := client.Payments.List(ctx, nil)
 ```
+
+How retries work:
+- Network errors and the status codes in `RetryOnStatusCodes` are retried with exponential backoff, up to `MaxRetries` times.
+- For `429` responses the `Retry-After` header is honored. If it asks for a longer wait than `MaxBackoff`, the error is returned instead.
+- `POST` and `PATCH` requests (such as creating a payment or emailing an invoice) are only retried after a `429`, because the server may already have processed them. Set `RetryNonIdempotent: true` to retry them in every case.
 
 ## Generic Requests
 
