@@ -25,7 +25,7 @@ const (
 	WebhookEventQueryParam = "event"
 
 	// WebhookSecretHeader is the request header that must contain the secret passed to NewWebhookHandler.
-	WebhookSecretHeader = "X-Webhook-Secret"
+	WebhookSecretHeader = "X-Webhook-Secret" //nolint:gosec // G101 false positive: this is a header name, not a credential.
 
 	// MaxWebhookBodyBytes is the largest request body WebhookHandler accepts (10 MB).
 	MaxWebhookBodyBytes = 10 << 20
