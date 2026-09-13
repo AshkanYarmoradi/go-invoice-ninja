@@ -2,8 +2,14 @@
 //
 // This example shows how to:
 // - Set up a webhook endpoint
+// - Protect it with a shared secret header
 // - Register event handlers
 // - Handle different webhook events
+//
+// In Invoice Ninja (Settings > Account Management > Integrations > API Webhooks), create one
+// webhook per event. Name the event in the target URL, for example
+// https://your-server.com/webhook?event=payment.created, and add an X-Webhook-Secret header
+// with the value of INVOICE_NINJA_WEBHOOK_SECRET.
 //
 // Run with: go run main.go
 package main
@@ -14,6 +20,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	invoiceninja "github.com/AshkanYarmoradi/go-invoice-ninja"
 )
@@ -21,11 +28,10 @@ import (
 func main() {
 	webhookSecret := os.Getenv("INVOICE_NINJA_WEBHOOK_SECRET")
 	if webhookSecret == "" {
-		log.Println("Warning: INVOICE_NINJA_WEBHOOK_SECRET not set, signature verification disabled")
-		webhookSecret = "" // Empty string disables signature verification
+		log.Println("Warning: INVOICE_NINJA_WEBHOOK_SECRET not set, requests will not be authenticated")
 	}
 
-	// Create a webhook handler
+	// Create a webhook handler. With a secret, requests must send it in the X-Webhook-Secret header.
 	webhookHandler := invoiceninja.NewWebhookHandler(webhookSecret)
 
 	// Register handlers for different event types using convenience methods
@@ -33,25 +39,31 @@ func main() {
 	webhookHandler.OnInvoiceCreated(handleInvoiceCreated)
 	webhookHandler.OnClientCreated(handleClientCreated)
 
-	// You can also use the generic On method for any event type
-	webhookHandler.On("invoice.paid", func(event *invoiceninja.WebhookEvent) error {
-		log.Printf("Invoice paid event received")
-		prettyJSON, _ := json.MarshalIndent(json.RawMessage(event.Data), "", "  ")
-		log.Printf("Event data:\n%s", prettyJSON)
+	// You can also use the generic On method with any event name you put in the target URL
+	webhookHandler.On("invoice.updated", func(event *invoiceninja.WebhookEvent) error {
+		log.Printf("Invoice updated event received")
+		logEventData(event)
 		return nil
 	})
 
-	// Use the built-in HTTP handler
-	http.HandleFunc("/webhook", webhookHandler.HandleRequest)
+	// WebhookHandler implements http.Handler
+	mux := http.NewServeMux()
+	mux.Handle("/webhook", webhookHandler)
 
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
 
+	server := &http.Server{
+		Addr:              ":" + port,
+		Handler:           mux,
+		ReadHeaderTimeout: 10 * time.Second,
+	}
+
 	fmt.Printf("Starting webhook server on port %s...\n", port)
-	fmt.Println("Send webhooks to: http://localhost:" + port + "/webhook")
-	log.Fatal(http.ListenAndServe(":"+port, nil))
+	fmt.Println("Send webhooks to: http://localhost:" + port + "/webhook?event=payment.created")
+	log.Fatal(server.ListenAndServe())
 }
 
 func handlePaymentCreated(event *invoiceninja.WebhookEvent) error {
@@ -62,8 +74,7 @@ func handlePaymentCreated(event *invoiceninja.WebhookEvent) error {
 	if err != nil {
 		log.Printf("Could not parse payment data: %v", err)
 		// Still log the raw data for debugging
-		prettyJSON, _ := json.MarshalIndent(json.RawMessage(event.Data), "", "  ")
-		log.Printf("Raw event data:\n%s", prettyJSON)
+		logEventData(event)
 		return nil // Don't return error to acknowledge receipt
 	}
 
@@ -83,8 +94,7 @@ func handleInvoiceCreated(event *invoiceninja.WebhookEvent) error {
 	invoice, err := event.ParseInvoice()
 	if err != nil {
 		log.Printf("Could not parse invoice data: %v", err)
-		prettyJSON, _ := json.MarshalIndent(json.RawMessage(event.Data), "", "  ")
-		log.Printf("Raw event data:\n%s", prettyJSON)
+		logEventData(event)
 		return nil
 	}
 
@@ -103,8 +113,7 @@ func handleClientCreated(event *invoiceninja.WebhookEvent) error {
 	client, err := event.ParseClient()
 	if err != nil {
 		log.Printf("Could not parse client data: %v", err)
-		prettyJSON, _ := json.MarshalIndent(json.RawMessage(event.Data), "", "  ")
-		log.Printf("Raw event data:\n%s", prettyJSON)
+		logEventData(event)
 		return nil
 	}
 
@@ -113,4 +122,14 @@ func handleClientCreated(event *invoiceninja.WebhookEvent) error {
 
 	// Process the new client...
 	return nil
+}
+
+// logEventData logs the raw event data for debugging.
+func logEventData(event *invoiceninja.WebhookEvent) {
+	prettyJSON, err := json.MarshalIndent(event.Data, "", "  ")
+	if err != nil {
+		log.Printf("Event data: %s", event.Data)
+		return
+	}
+	log.Printf("Event data:\n%s", prettyJSON)
 }

@@ -5,24 +5,50 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
 )
 
-// WebhookEvent represents an Invoice Ninja webhook event.
+// Invoice Ninja webhook requests contain only the entity that changed (for example an
+// invoice or a payment) as JSON. They carry neither the event name nor a signature, so
+// the event name and a shared secret come from the target URL and headers configured
+// for each webhook in Invoice Ninja.
+const (
+	// WebhookEventHeader is the request header that names the event, such as "payment.created".
+	WebhookEventHeader = "X-Webhook-Event"
+
+	// WebhookEventQueryParam is the query parameter that names the event when it is part of
+	// the webhook's target URL, as in https://example.com/webhook?event=payment.created.
+	WebhookEventQueryParam = "event"
+
+	// WebhookSecretHeader is the request header that must contain the secret passed to NewWebhookHandler.
+	WebhookSecretHeader = "X-Webhook-Secret"
+
+	// MaxWebhookBodyBytes is the largest request body WebhookHandler accepts (10 MB).
+	MaxWebhookBodyBytes = 10 << 20
+)
+
+// Headers that may carry a hex-encoded HMAC-SHA256 signature of the body from custom senders.
+const (
+	signatureHeader       = "X-Ninja-Signature"
+	legacySignatureHeader = "X-Invoice-Ninja-Signature"
+)
+
+// WebhookEvent represents a webhook event received from Invoice Ninja.
 type WebhookEvent struct {
-	// EventType is the type of event (e.g., "invoice.created", "payment.created").
+	// EventType is the event name, such as "invoice.created" or "payment.created".
 	EventType string `json:"event_type"`
 
-	// Data contains the event payload.
+	// Data contains the entity JSON, such as an invoice or a payment.
 	Data json.RawMessage `json:"data"`
 }
 
 // WebhookHandler handles incoming webhook requests from Invoice Ninja.
 type WebhookHandler struct {
-	// secret is the webhook signing secret for signature verification.
+	// secret is the shared secret used to authenticate requests.
 	secret string
 
 	// handlers maps event types to handler functions.
@@ -33,7 +59,12 @@ type WebhookHandler struct {
 type WebhookEventHandler func(event *WebhookEvent) error
 
 // NewWebhookHandler creates a new webhook handler.
-// If secret is provided, signature verification will be enforced.
+//
+// If secret is not empty, every request must include it in the X-Webhook-Secret header.
+// Invoice Ninja does not sign webhook requests, so add this header to each webhook in
+// Invoice Ninja (Settings > Account Management > Integrations > API Webhooks). For custom
+// senders, a hex-encoded HMAC-SHA256 signature of the body in the X-Ninja-Signature
+// header is accepted instead.
 func NewWebhookHandler(secret string) *WebhookHandler {
 	return &WebhookHandler{
 		secret:   secret,
@@ -41,7 +72,7 @@ func NewWebhookHandler(secret string) *WebhookHandler {
 	}
 }
 
-// On registers a handler for a specific event type.
+// On registers a handler for an event name, such as "invoice.created".
 func (h *WebhookHandler) On(eventType string, handler WebhookEventHandler) {
 	h.handlers[eventType] = handler
 }
@@ -97,35 +128,59 @@ func (h *WebhookHandler) OnQuoteCreated(handler WebhookEventHandler) {
 }
 
 // HandleRequest processes an incoming webhook HTTP request.
+//
+// The event name is read from the X-Webhook-Event header, then from the "event" query
+// parameter. A JSON body of the form {"event_type": "...", "data": {...}} is also
+// accepted. The response is 200 when the event was handled or no handler is registered
+// for it.
 func (h *WebhookHandler) HandleRequest(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
+	if r.Method != http.MethodPost && r.Method != http.MethodPut {
+		w.Header().Set("Allow", "POST, PUT")
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		http.Error(w, "Failed to read request body", http.StatusBadRequest)
-		return
-	}
-	defer r.Body.Close()
-
-	// Verify signature if secret is configured
+	// Check the secret header before reading the body
+	secretVerified := false
 	if h.secret != "" {
-		signature := r.Header.Get("X-Ninja-Signature")
-		if signature == "" {
-			signature = r.Header.Get("X-Invoice-Ninja-Signature")
-		}
-
-		if !h.verifySignature(body, signature) {
-			http.Error(w, "Invalid signature", http.StatusUnauthorized)
+		if secret := r.Header.Get(WebhookSecretHeader); secret != "" {
+			if !secretsEqual(secret, h.secret) {
+				http.Error(w, "Invalid secret", http.StatusUnauthorized)
+				return
+			}
+			secretVerified = true
+		} else if requestSignature(r) == "" {
+			http.Error(w, "Missing secret", http.StatusUnauthorized)
 			return
 		}
 	}
 
-	var event WebhookEvent
-	if err := json.Unmarshal(body, &event); err != nil {
+	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, MaxWebhookBodyBytes))
+	if err != nil {
+		var maxBytesErr *http.MaxBytesError
+		if errors.As(err, &maxBytesErr) {
+			http.Error(w, "Request body too large", http.StatusRequestEntityTooLarge)
+			return
+		}
+		http.Error(w, "Failed to read request body", http.StatusBadRequest)
+		return
+	}
+
+	// Verify the signature of custom senders that don't send the secret header
+	if h.secret != "" && !secretVerified && !h.verifySignature(body, requestSignature(r)) {
+		http.Error(w, "Invalid signature", http.StatusUnauthorized)
+		return
+	}
+
+	event, err := parseWebhookEvent(r, body)
+	if err != nil {
 		http.Error(w, "Failed to parse webhook payload", http.StatusBadRequest)
+		return
+	}
+
+	if event.EventType == "" {
+		http.Error(w, fmt.Sprintf("Missing event name: set the %s header or the %q query parameter",
+			WebhookEventHeader, WebhookEventQueryParam), http.StatusBadRequest)
 		return
 	}
 
@@ -137,15 +192,57 @@ func (h *WebhookHandler) HandleRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := handler(&event); err != nil {
-		http.Error(w, fmt.Sprintf("Handler error: %v", err), http.StatusInternalServerError)
+	if err := handler(event); err != nil {
+		// Don't send internal error details back to the caller
+		http.Error(w, "Webhook handler failed", http.StatusInternalServerError)
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
 }
 
-// verifySignature verifies the webhook signature.
+// parseWebhookEvent builds a WebhookEvent from the request and its body.
+func parseWebhookEvent(r *http.Request, body []byte) (*WebhookEvent, error) {
+	var envelope WebhookEvent
+	if err := json.Unmarshal(body, &envelope); err != nil {
+		return nil, err
+	}
+
+	event := &WebhookEvent{
+		EventType: r.Header.Get(WebhookEventHeader),
+		Data:      json.RawMessage(body),
+	}
+	if event.EventType == "" {
+		event.EventType = r.URL.Query().Get(WebhookEventQueryParam)
+	}
+
+	// Envelope format used by custom senders: {"event_type": "...", "data": {...}}
+	if envelope.EventType != "" {
+		if event.EventType == "" {
+			event.EventType = envelope.EventType
+		}
+		event.Data = envelope.Data
+	}
+
+	return event, nil
+}
+
+// requestSignature returns the HMAC signature sent with the request, if any.
+func requestSignature(r *http.Request) string {
+	if signature := r.Header.Get(signatureHeader); signature != "" {
+		return signature
+	}
+	return r.Header.Get(legacySignatureHeader)
+}
+
+// secretsEqual compares two secrets in constant time.
+func secretsEqual(a, b string) bool {
+	hashA := sha256.Sum256([]byte(a))
+	hashB := sha256.Sum256([]byte(b))
+	return hmac.Equal(hashA[:], hashB[:])
+}
+
+// verifySignature verifies a hex-encoded HMAC-SHA256 signature of the payload.
 func (h *WebhookHandler) verifySignature(payload []byte, signature string) bool {
 	if signature == "" {
 		return false

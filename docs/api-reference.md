@@ -300,40 +300,45 @@ err := client.PaymentTerms.Delete(ctx, termID string)
 
 ---
 
-## Webhooks Service
+## Webhooks
 
-### List Webhooks
+Webhooks are created in Invoice Ninja under Settings > Account Management > Integrations > API Webhooks, one webhook per event. The SDK doesn't manage those webhooks; it provides a handler for the requests Invoice Ninja sends.
 
-```go
-webhooks, err := client.Webhooks.List(ctx, &WebhookListOptions{...})
-```
-
-### Create Webhook
-
-```go
-webhook, err := client.Webhooks.Create(ctx, &Webhook{
-    TargetURL:  string, // Your webhook endpoint
-    EventID:    string, // Event to subscribe to
-    Format:     string, // "JSON"
-})
-```
-
-### Delete Webhook
-
-```go
-err := client.Webhooks.Delete(ctx, webhookID string)
-```
+Invoice Ninja sends only the entity (for example the payment) as JSON, without the event name or a signature. For each webhook:
+- Put the event name in the target URL, e.g. `https://example.com/webhook?event=payment.created`, or add an `X-Webhook-Event` header
+- Add an `X-Webhook-Secret` header with the secret you pass to `NewWebhookHandler`
 
 ### Webhook Handler
 
 ```go
 handler := invoiceninja.NewWebhookHandler(secret string)
 
-// Verify signature
-valid := handler.VerifySignature(body []byte, signature string)
+// Register a handler for any event name
+handler.On(eventType string, func(event *invoiceninja.WebhookEvent) error { ... })
 
-// Parse event
-event, err := handler.ParseEvent(body []byte)
+// Or use the helpers: OnInvoiceCreated, OnInvoiceUpdated, OnInvoiceDeleted,
+// OnPaymentCreated, OnPaymentUpdated, OnPaymentDeleted, OnClientCreated,
+// OnClientUpdated, OnCreditCreated, OnQuoteCreated
+handler.OnPaymentCreated(func(event *invoiceninja.WebhookEvent) error { ... })
+
+// WebhookHandler implements http.Handler
+http.Handle("/webhook", handler)
+```
+
+How requests are handled:
+- Only `POST` and `PUT` are accepted; other methods get `405`.
+- If a secret is set, the `X-Webhook-Secret` header must match it. For custom senders, a hex-encoded HMAC-SHA256 signature of the body in `X-Ninja-Signature` is accepted instead. Otherwise the response is `401`.
+- The event name is read from the `X-Webhook-Event` header, then the `event` query parameter. A JSON body of the form `{"event_type": "...", "data": {...}}` is also accepted. Without an event name the response is `400`.
+- Bodies larger than `MaxWebhookBodyBytes` (10 MB) get `413`.
+- Events without a registered handler get `200`. If a handler returns an error, the response is `500` without the error details.
+
+### Parsing Event Data
+
+```go
+invoice, err := event.ParseInvoice() // *Invoice
+payment, err := event.ParsePayment() // *Payment
+client, err := event.ParseClient()   // *INClient
+credit, err := event.ParseCredit()   // *Credit
 ```
 
 ---

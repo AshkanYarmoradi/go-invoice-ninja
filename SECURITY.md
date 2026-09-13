@@ -75,7 +75,7 @@ When using the Go Invoice Ninja SDK, we recommend following these security best 
 
 ### Webhook Security
 
-- Always verify webhook signatures using the built-in verification methods
+- Always authenticate webhook requests: Invoice Ninja does not sign them, so pass a secret to `NewWebhookHandler` and add it as an `X-Webhook-Secret` header to each webhook in Invoice Ninja
 - Use HTTPS endpoints for webhook receivers
 - Implement rate limiting for webhook endpoints
 - Log and monitor webhook requests for unusual activity
@@ -98,13 +98,12 @@ client := invoiceninja.NewClient("your-secret-token-here")
 ```
 
 ```go
-// ✅ Good: Verify webhook signatures
-if !invoiceninja.VerifyWebhookSignature(payload, signature, secret) {
-    return errors.New("invalid webhook signature")
-}
+// ✅ Good: Require a shared secret on webhook requests
+// (add it as an X-Webhook-Secret header to each webhook in Invoice Ninja)
+handler := invoiceninja.NewWebhookHandler(os.Getenv("INVOICE_NINJA_WEBHOOK_SECRET"))
 
-// ❌ Bad: Process webhooks without verification
-// Don't trust incoming webhook data without verification
+// ❌ Bad: Accept webhooks without authentication
+handler := invoiceninja.NewWebhookHandler("")
 ```
 
 ## Security Updates

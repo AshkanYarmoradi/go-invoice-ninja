@@ -355,7 +355,7 @@ err := client.Uploads.UploadDocumentFromReader(ctx, "invoices", "invoice-id", "d
 Handle incoming webhooks from Invoice Ninja:
 
 ```go
-// Create a webhook handler
+// Create a webhook handler that requires the X-Webhook-Secret header
 handler := invoiceninja.NewWebhookHandler("your-webhook-secret")
 
 // Register event handlers
@@ -382,11 +382,18 @@ http.Handle("/webhook", handler)
 http.ListenAndServe(":8080", nil)
 ```
 
+Invoice Ninja sends only the entity (for example the payment) in a webhook, without the event name or a signature. For each webhook you create in Invoice Ninja (Settings > Account Management > Integrations > API Webhooks):
+- Put the event name in the target URL, e.g. `https://your-server.com/webhook?event=payment.created` (or add an `X-Webhook-Event` header)
+- Add an `X-Webhook-Secret` header with your secret
+
 Supported webhook events:
-- `OnInvoiceCreated`, `OnInvoiceUpdated`, `OnInvoiceDeleted`
-- `OnPaymentCreated`, `OnPaymentUpdated`, `OnPaymentDeleted`
-- `OnClientCreated`, `OnClientUpdated`
-- `OnCreditCreated`, `OnQuoteCreated`
+- `OnInvoiceCreated`, `OnInvoiceUpdated`, `OnInvoiceDeleted` (`invoice.created`, `invoice.updated`, `invoice.deleted`)
+- `OnPaymentCreated`, `OnPaymentUpdated`, `OnPaymentDeleted` (`payment.created`, `payment.updated`, `payment.deleted`)
+- `OnClientCreated`, `OnClientUpdated` (`client.created`, `client.updated`)
+- `OnCreditCreated`, `OnQuoteCreated` (`credit.created`, `quote.created`)
+- `On("event.name", handler)` for any other event
+
+See [examples/webhooks](examples/webhooks/) for a complete setup.
 
 ## Rate Limiting & Retry
 
