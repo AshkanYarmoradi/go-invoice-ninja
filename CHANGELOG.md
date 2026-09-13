@@ -7,9 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `UsesInclusiveTaxes` field on `Invoice` (#7).
+- `WithRateLimiter` and `WithRetryConfig` client options, so any client can use rate limiting and retries.
+- `RetryConfig.RetryNonIdempotent` and `APIError.Headers`.
+- `WebhookEventHeader`, `WebhookEventQueryParam`, `WebhookSecretHeader` and `MaxWebhookBodyBytes` for configuring webhooks.
+
+### Changed
+- `POST` and `PATCH` requests are retried only after a 429 response unless `RetryConfig.RetryNonIdempotent` is set, because the server may already have processed them.
+- A 429 response's `Retry-After` header is honored instead of a fixed 60 second wait. If it asks for longer than `MaxBackoff`, the error is returned. A `MaxBackoff` of zero now means no limit.
+- `WebhookHandler` reads the event name from the `X-Webhook-Event` header or the `event` query parameter, and checks the secret in the `X-Webhook-Secret` header. The `{"event_type": ..., "data": ...}` body format and HMAC signatures are still accepted.
+- `WebhookHandler` accepts `PUT` requests, rejects bodies over 10 MB, returns 400 when the event name is missing, and no longer includes handler error messages in responses.
+
 ### Fixed
+- Service methods on `RateLimitedClient` now use its rate limiter and retries. Previously only `DoRequestWithRetry` did.
+- `DoRequestWithRetry` sends its query parameters instead of dropping them.
+- `NewRateLimiter(0)` no longer panics, and a negative `MaxRetries` no longer skips the request.
+- `WithTimeout` no longer depends on the option order or changes the `*http.Client` passed to `WithHTTPClient`.
+- `WebhookHandler` works with Invoice Ninja webhooks, which contain neither an event name nor a signature.
 - `InvoicesService.Download` now downloads the invoice PDF by delegating to `DownloadsService.DownloadInvoicePDF`. It previously always returned a "not implemented" error.
 - Documentation now matches the SDK code:
+  - The rate limiting, retry and webhook sections of the README and guides describe the new behavior.
   - `docs/api-reference.md` uses the real method signatures, list option field types and model fields, and documents the Downloads and Uploads services, client portal links, `RequestWithQuery` and `SetBaseURL`.
   - The guides and the basic example check errors with `invoiceninja.IsAPIError` instead of type assertions, which miss wrapped errors.
   - The authentication guide no longer shows the non-existent `WithAPISecret` option, and the getting started guide no longer lists a `client.Webhooks` service.
