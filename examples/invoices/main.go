@@ -2,9 +2,10 @@
 //
 // This example shows how to:
 // - Create an invoice with line items
-// - Apply discounts and taxes
-// - Update invoice status
-// - Download invoice PDF
+// - Get the invoice details
+// - Update the invoice's public notes
+//
+// It requires the INVOICE_NINJA_TOKEN and INVOICE_NINJA_CLIENT_ID environment variables.
 //
 // Run with: go run main.go
 package main

@@ -188,9 +188,8 @@ func (s *InvoicesService) GetBlank(ctx context.Context) (*Invoice, error) {
 	return &resp.Data, nil
 }
 
-// Download downloads an invoice PDF.
+// Download downloads an invoice PDF by invitation key and returns the raw PDF bytes.
+// It delegates to DownloadsService.DownloadInvoicePDF.
 func (s *InvoicesService) Download(ctx context.Context, invitationKey string) ([]byte, error) {
-	// This would need special handling for binary response
-	// For now, we'll return the raw bytes
-	return nil, fmt.Errorf("not implemented - use client.Request with custom handling")
+	return s.client.Downloads.DownloadInvoicePDF(ctx, invitationKey)
 }

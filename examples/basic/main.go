@@ -42,7 +42,7 @@ func main() {
 	})
 	if err != nil {
 		// Handle specific error types
-		if apiErr, ok := err.(*invoiceninja.APIError); ok {
+		if apiErr, ok := invoiceninja.IsAPIError(err); ok {
 			if apiErr.IsUnauthorized() {
 				log.Fatal("Invalid API token")
 			}

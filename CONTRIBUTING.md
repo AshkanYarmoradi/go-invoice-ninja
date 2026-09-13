@@ -77,9 +77,14 @@ make coverage
 # Run tests with race detector
 make test-race
 
-# Run integration tests (requires API token)
-INVOICE_NINJA_TOKEN=your-token make test-integration
+# Run integration tests against the demo server
+make test-integration
+
+# Run integration tests against your own instance
+INVOICE_NINJA_BASE_URL=https://your-instance.com INVOICE_NINJA_API_TOKEN=your-token make test-integration
 ```
+
+Integration tests use the `integration` build tag. They read `INVOICE_NINJA_BASE_URL` and `INVOICE_NINJA_API_TOKEN`. If these are unset, they default to the demo server (`https://demo.invoiceninja.com`) and the demo token `TOKEN`.
 
 ### Code Style
 
@@ -152,7 +157,7 @@ go-invoice-ninja/
 When adding new functionality:
 
 1. **Follow existing patterns** - Look at how similar features are implemented
-2. **Support pagination** - Use `ListOptions` for list operations
+2. **Support pagination** - Each list method takes a `<Resource>ListOptions` struct (for example `PaymentListOptions`) with a `toQuery()` method that converts it to query parameters
 3. **Return typed errors** - Use `APIError` for API errors
 4. **Support context** - All operations should accept `context.Context`
 5. **Add tests** - Unit tests and integration tests where applicable
@@ -165,6 +170,7 @@ When adding new functionality:
 4. Initialize the service in `NewClient`
 5. Add models to `models.go` if needed
 6. Update `README.md` with usage examples
+7. Document the new methods in `docs/api-reference.md`
 
 ## Questions?
 

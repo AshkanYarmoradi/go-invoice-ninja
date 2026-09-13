@@ -33,7 +33,7 @@ test-race:
 	@echo "Running tests with race detector..."
 	$(GOTEST) -v -race ./...
 
-## test-integration: Run integration tests (requires INVOICE_NINJA_TOKEN)
+## test-integration: Run integration tests (uses INVOICE_NINJA_API_TOKEN and INVOICE_NINJA_BASE_URL, defaults to the demo server)
 test-integration:
 	@echo "Running integration tests..."
 	$(GOTEST) -v -tags=integration ./...

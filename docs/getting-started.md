@@ -98,12 +98,14 @@ The SDK provides the following services:
 | `client.Clients` | Client management |
 | `client.Credits` | Credit operations |
 | `client.PaymentTerms` | Payment terms |
-| `client.Webhooks` | Webhook management |
 | `client.Downloads` | File downloads |
+| `client.Uploads` | Document uploads |
+
+Incoming webhooks are not a client service. Handle them with `invoiceninja.NewWebhookHandler`; see the [webhooks example](../examples/webhooks/).
 
 ## Next Steps
 
 - [Authentication Guide](authentication.md)
 - [Error Handling](error-handling.md)
 - [API Reference](api-reference.md)
-- [Examples](/examples/)
+- [Examples](../examples/)

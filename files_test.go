@@ -151,3 +151,34 @@ func TestUploadsServiceUploadError(t *testing.T) {
 		t.Errorf("expected IsValidationError to be true")
 	}
 }
+
+func TestInvoicesServiceDownload(t *testing.T) {
+	expectedPDF := []byte("%PDF-1.4 fake invoice pdf content")
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "GET" {
+			t.Errorf("expected GET method, got %s", r.Method)
+		}
+		if r.URL.Path != "/api/v1/invoice/inv-key-123/download" {
+			t.Errorf("expected path /api/v1/invoice/inv-key-123/download, got %s", r.URL.Path)
+		}
+		if r.Header.Get("Accept") != "application/pdf" {
+			t.Errorf("expected Accept: application/pdf header, got %s", r.Header.Get("Accept"))
+		}
+
+		w.Header().Set("Content-Type", "application/pdf")
+		w.Write(expectedPDF)
+	}))
+	defer server.Close()
+
+	client := NewClient("test-token", WithBaseURL(server.URL))
+
+	pdf, err := client.Invoices.Download(context.Background(), "inv-key-123")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !bytes.Equal(pdf, expectedPDF) {
+		t.Errorf("expected PDF content to match")
+	}
+}

@@ -1,21 +1,22 @@
 # Test Data
 
-This directory contains test fixtures and mock data for unit tests.
+This directory contains sample JSON responses from the Invoice Ninja API.
 
 ## Structure
 
 ```
 testdata/
-├── fixtures/           # JSON response fixtures
-│   ├── payments/
-│   ├── invoices/
-│   └── clients/
+├── fixtures/
+│   ├── payment.json         # A single payment response
+│   └── payments_list.json   # A list of payments with pagination metadata
 └── README.md
 ```
 
 ## Usage
 
-Test fixtures are used by the test suite to mock API responses:
+The test suite does not currently load these fixtures. Unit tests define their mock API responses inline in the test code.
+
+To use a fixture in a new test, you could add a helper like the one below. It is only an example; the test suite does not provide it:
 
 ```go
 func loadFixture(t *testing.T, name string) []byte {

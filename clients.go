@@ -199,7 +199,7 @@ type StatementRequest struct {
 	Status       string `json:"status,omitempty"`
 }
 
-// GetStatement generates a client statement.
+// GetStatement is not implemented and always returns an error.
 func (s *ClientsService) GetStatement(ctx context.Context, req *StatementRequest) ([]byte, error) {
 	// This would need special handling for PDF response
 	return nil, fmt.Errorf("not implemented - use client.Request with custom handling")

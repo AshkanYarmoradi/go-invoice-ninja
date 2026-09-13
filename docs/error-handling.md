@@ -22,7 +22,7 @@ type APIError struct {
 ```go
 payments, err := client.Payments.List(ctx, nil)
 if err != nil {
-    if apiErr, ok := err.(*invoiceninja.APIError); ok {
+    if apiErr, ok := invoiceninja.IsAPIError(err); ok {
         // Handle API-specific error
         fmt.Printf("Status: %d, Message: %s\n", apiErr.StatusCode, apiErr.Message)
     } else {
@@ -37,7 +37,7 @@ if err != nil {
 The `APIError` type provides helper methods for common error types:
 
 ```go
-if apiErr, ok := err.(*invoiceninja.APIError); ok {
+if apiErr, ok := invoiceninja.IsAPIError(err); ok {
     switch {
     case apiErr.IsNotFound():
         // 404 - Resource not found
@@ -78,7 +78,7 @@ payment, err := client.Payments.Create(ctx, &invoiceninja.PaymentRequest{
     Amount: -100, // Invalid!
 })
 if err != nil {
-    if apiErr, ok := err.(*invoiceninja.APIError); ok && apiErr.IsValidationError() {
+    if apiErr, ok := invoiceninja.IsAPIError(err); ok && apiErr.IsValidationError() {
         for field, errors := range apiErr.Errors {
             for _, e := range errors {
                 fmt.Printf("Validation error on %s: %s\n", field, e)
@@ -200,7 +200,7 @@ if err != nil {
 ### 3. Log Contextual Information
 
 ```go
-if apiErr, ok := err.(*invoiceninja.APIError); ok {
+if apiErr, ok := invoiceninja.IsAPIError(err); ok {
     log.Printf("API error: status=%d message=%s endpoint=%s",
         apiErr.StatusCode,
         apiErr.Message,

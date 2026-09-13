@@ -33,14 +33,20 @@ client := invoiceninja.NewRateLimitedClient(apiToken string, opts ...ClientOptio
 payments, err := client.Payments.List(ctx, &PaymentListOptions{
     PerPage:   int,    // Items per page (default: 20)
     Page:      int,    // Page number
+    Filter:    string, // Search across amount, date and custom values
+    Number:    string, // Filter by payment number
     ClientID:  string, // Filter by client
     Status:    string, // Filter by status
-    Sort:      string, // Sort field (e.g., "amount|desc")
-    CreatedAt: int,    // Filter by created timestamp
-    UpdatedAt: int,    // Filter by updated timestamp
-    IsDeleted: bool,   // Include deleted
+    CreatedAt: string, // Filter by creation date
+    UpdatedAt: string, // Filter by update date
+    IsDeleted: *bool,  // Filter by deleted status
+    VendorID:  string, // Filter by vendor
+    Sort:      string, // Sort order (e.g., "id|desc", "number|asc")
+    Include:   string, // Related entities to include
 })
 ```
+
+Zero-value fields, including a nil `IsDeleted`, are not sent. Pass `nil` instead of an options struct to use the API defaults. `List` returns `*ListResponse[Payment]`, with the payments in `Data` and pagination details in `Meta.Pagination`. The `List` methods of the other services work the same way.
 
 ### Get Payment
 
@@ -63,6 +69,14 @@ payment, err := client.Payments.Create(ctx, &PaymentRequest{
 })
 ```
 
+### Create Payment with Email Receipt
+
+```go
+payment, err := client.Payments.CreateWithEmailReceipt(ctx, &PaymentRequest{...}, sendEmail bool)
+```
+
+Same as `Create`, but also sets the `email_receipt` query parameter to `sendEmail`.
+
 ### Update Payment
 
 ```go
@@ -79,21 +93,39 @@ err := client.Payments.Delete(ctx, paymentID string)
 
 ```go
 payment, err := client.Payments.Refund(ctx, &RefundRequest{
-    ID:       string,  // Payment ID
-    Amount:   float64, // Refund amount
-    Invoices: []RefundInvoice,
-    Date:     string,
+    ID:            string,           // Payment ID
+    Amount:        float64,          // Refund amount
+    Invoices:      []PaymentInvoice, // Invoices to refund
+    Date:          string,           // Refund date
+    GatewayRefund: bool,             // Refund through the payment gateway
+    SendEmail:     bool,             // Send a refund notification email
 })
 ```
+
+### Archive and Restore
+
+```go
+payment, err := client.Payments.Archive(ctx, paymentID string)
+payment, err := client.Payments.Restore(ctx, paymentID string)
+```
+
+Each sends a single-ID bulk action and returns the first payment in the response, or an error if the response contains none.
 
 ### Bulk Actions
 
 ```go
-err := client.Payments.Bulk(ctx, &BulkActionRequest{
-    Action: string,   // "archive", "restore", "delete"
-    IDs:    []string, // Payment IDs
-})
+payments, err := client.Payments.Bulk(ctx, action string, ids []string) // []Payment
 ```
+
+`action` is sent as-is, for example `"archive"`, `"restore"` or `"delete"`.
+
+### Get Blank Payment
+
+```go
+payment, err := client.Payments.GetBlank(ctx)
+```
+
+Returns a new payment populated with the server's default values.
 
 ---
 
@@ -103,11 +135,16 @@ err := client.Payments.Bulk(ctx, &BulkActionRequest{
 
 ```go
 invoices, err := client.Invoices.List(ctx, &InvoiceListOptions{
-    PerPage:  int,
-    Page:     int,
-    ClientID: string,
-    Status:   string,
-    Sort:     string,
+    PerPage:   int,    // Items per page (default: 20)
+    Page:      int,    // Page number
+    Filter:    string, // Search across multiple fields
+    ClientID:  string, // Filter by client
+    Status:    string, // Filter by status
+    CreatedAt: string, // Filter by creation date
+    UpdatedAt: string, // Filter by update date
+    IsDeleted: *bool,  // Filter by deleted status
+    Sort:      string, // Sort order (e.g., "id|desc", "number|asc")
+    Include:   string, // Related entities to include
 })
 ```
 
@@ -149,16 +186,35 @@ err := client.Invoices.Delete(ctx, invoiceID string)
 ### Download PDF
 
 ```go
-pdfBytes, err := client.Downloads.Invoice(ctx, invitationKey string)
+pdfBytes, err := client.Invoices.Download(ctx, invitationKey string)
 ```
+
+`Download` calls `client.Downloads.DownloadInvoicePDF(ctx, invitationKey)`. It takes an invitation key, not an invoice ID. See [Downloads Service](#downloads-service).
+
+### Invoice Actions
+
+```go
+invoice, err := client.Invoices.Archive(ctx, invoiceID string)
+invoice, err := client.Invoices.Restore(ctx, invoiceID string)
+invoice, err := client.Invoices.MarkPaid(ctx, invoiceID string)
+invoice, err := client.Invoices.MarkSent(ctx, invoiceID string)
+invoice, err := client.Invoices.Email(ctx, invoiceID string)
+```
+
+Each sends a single-ID bulk action (`archive`, `restore`, `mark_paid`, `mark_sent` or `email`) and returns the first invoice in the response, or an error if the response contains none.
 
 ### Bulk Actions
 
 ```go
-err := client.Invoices.Bulk(ctx, &BulkActionRequest{
-    Action: string,   // "archive", "restore", "delete", "mark_sent", "mark_paid"
-    IDs:    []string,
-})
+invoices, err := client.Invoices.Bulk(ctx, action string, ids []string) // []Invoice
+```
+
+`action` is sent as-is, for example `"archive"`, `"restore"`, `"delete"`, `"mark_sent"`, `"mark_paid"` or `"email"`.
+
+### Get Blank Invoice
+
+```go
+invoice, err := client.Invoices.GetBlank(ctx)
 ```
 
 ---
@@ -169,10 +225,16 @@ err := client.Invoices.Bulk(ctx, &BulkActionRequest{
 
 ```go
 clients, err := client.Clients.List(ctx, &ClientListOptions{
-    PerPage: int,
-    Page:    int,
-    Status:  string,
-    Sort:    string,
+    PerPage:   int,    // Items per page (default: 20)
+    Page:      int,    // Page number
+    Filter:    string, // Search across multiple fields
+    Balance:   string, // Filter by balance (e.g., "gt:1000", "lt:500")
+    Status:    string, // Filter by status
+    CreatedAt: string, // Filter by creation date
+    UpdatedAt: string, // Filter by update date
+    IsDeleted: *bool,  // Filter by deleted status
+    Sort:      string, // Sort order (e.g., "name|desc", "balance|asc")
+    Include:   string, // Related entities (contacts, documents, activities)
 })
 ```
 
@@ -185,9 +247,8 @@ c, err := client.Clients.Get(ctx, clientID string)
 ### Create Client
 
 ```go
-c, err := client.Clients.Create(ctx, &Client{
+c, err := client.Clients.Create(ctx, &INClient{
     Name:           string, // Required
-    DisplayName:    string,
     Address1:       string,
     Address2:       string,
     City:           string,
@@ -198,16 +259,18 @@ c, err := client.Clients.Create(ctx, &Client{
     Website:        string,
     PrivateNotes:   string,
     PublicNotes:    string,
-    VATNumber:      string,
+    VatNumber:      string,
     IDNumber:       string,
     Contacts:       []ClientContact,
 })
 ```
 
+A `ClientContact` has `ID`, `FirstName`, `LastName`, `Email`, `Phone`, `IsPrimary`, `ContactKey` and `CustomValue1` to `CustomValue4`.
+
 ### Update Client
 
 ```go
-c, err := client.Clients.Update(ctx, clientID string, &Client{...})
+c, err := client.Clients.Update(ctx, clientID string, &INClient{...})
 ```
 
 ### Delete Client
@@ -216,11 +279,66 @@ c, err := client.Clients.Update(ctx, clientID string, &Client{...})
 err := client.Clients.Delete(ctx, clientID string)
 ```
 
+`Delete` is a soft delete. To permanently remove a client and all of their records, use `Purge`:
+
+```go
+err := client.Clients.Purge(ctx, clientID string)
+```
+
+### Archive and Restore
+
+```go
+c, err := client.Clients.Archive(ctx, clientID string)
+c, err := client.Clients.Restore(ctx, clientID string)
+```
+
 ### Merge Clients
 
 ```go
-c, err := client.Clients.Merge(ctx, targetClientID, sourceClientID string)
+c, err := client.Clients.Merge(ctx, primaryID, mergeableID string)
 ```
+
+Sends `POST /api/v1/clients/{primaryID}/{mergeableID}/merge` and returns the client from the response.
+
+### Bulk Actions
+
+```go
+clients, err := client.Clients.Bulk(ctx, action string, ids []string) // []INClient
+```
+
+### Get Blank Client
+
+```go
+c, err := client.Clients.GetBlank(ctx)
+```
+
+### Client Portal Links
+
+```go
+resp, err := client.Clients.SwitchToClientPortal(ctx, clientID, contactID string) // *ClientPortalSwitchResponse
+portalURL := resp.URL
+
+// Same as SwitchToClientPortal(ctx, clientID, ""):
+resp, err := client.Clients.GetClientPortalURL(ctx, clientID string)
+```
+
+`SwitchToClientPortal` does not call a portal endpoint. It fetches the client with `Get`, picks a contact, and builds the URL `{baseURL}/client/key_login/{contact_key}` from the client's base URL and the contact's `ContactKey`:
+
+- If `contactID` is set, it uses the contact with that ID.
+- If `contactID` is empty, it uses the primary contact, falling back to the first contact.
+
+It returns an error when:
+
+- The client can't be fetched. This error wraps the underlying error with `%w`, so check it with `invoiceninja.IsAPIError(err)` rather than a type assertion.
+- The client has no contacts.
+- `contactID` is set and no contact has that ID.
+- The chosen contact has no `contact_key` (portal access may be disabled).
+
+Anyone with the URL can open the client portal without a password, so treat it like a credential.
+
+### Statements
+
+`GetStatement(ctx, req *StatementRequest) ([]byte, error)` is not implemented and always returns an error.
 
 ---
 
@@ -229,7 +347,18 @@ c, err := client.Clients.Merge(ctx, targetClientID, sourceClientID string)
 ### List Credits
 
 ```go
-credits, err := client.Credits.List(ctx, &CreditListOptions{...})
+credits, err := client.Credits.List(ctx, &CreditListOptions{
+    PerPage:   int,    // Items per page
+    Page:      int,    // Page number
+    Filter:    string, // Search filter
+    ClientID:  string, // Filter by client
+    Status:    string, // Filter by status
+    CreatedAt: string, // Filter by creation date
+    UpdatedAt: string, // Filter by update date
+    IsDeleted: *bool,  // Filter by deleted status
+    Sort:      string, // Sort order
+    Include:   string, // Related entities to include
+})
 ```
 
 ### Get Credit
@@ -249,6 +378,16 @@ credit, err := client.Credits.Create(ctx, &Credit{
 })
 ```
 
+The `Credit` type has these fields:
+
+| Type | Fields |
+|------|--------|
+| `string` | `ID`, `UserID`, `AssignedUserID`, `ClientID`, `StatusID`, `InvoiceID`, `Number`, `PONumber`, `Terms`, `PublicNotes`, `PrivateNotes`, `Footer`, `CustomValue1`, `CustomValue2`, `CustomValue3`, `CustomValue4`, `TaxName1`, `TaxName2`, `TaxName3`, `Date`, `LastSentDate`, `NextSendDate`, `PartialDueDate`, `DueDate` |
+| `float64` | `TaxRate1`, `TaxRate2`, `TaxRate3`, `TotalTaxes`, `Amount`, `Balance`, `PaidToDate`, `Discount`, `Partial` |
+| `bool` | `IsAmountDiscount`, `IsDeleted`, `UsesInclusiveTaxes` |
+| `[]LineItem` | `LineItems` |
+| `int64` | `UpdatedAt`, `ArchivedAt`, `CreatedAt` |
+
 ### Update Credit
 
 ```go
@@ -261,6 +400,76 @@ credit, err := client.Credits.Update(ctx, creditID string, &Credit{...})
 err := client.Credits.Delete(ctx, creditID string)
 ```
 
+### Credit Actions
+
+```go
+credit, err := client.Credits.Archive(ctx, creditID string)
+credit, err := client.Credits.Restore(ctx, creditID string)
+credit, err := client.Credits.MarkSent(ctx, creditID string)
+credit, err := client.Credits.Email(ctx, creditID string)
+```
+
+Each sends a single-ID bulk action (`archive`, `restore`, `mark_sent` or `email`) and returns the first credit in the response, or an error if the response contains none.
+
+### Bulk Actions
+
+```go
+credits, err := client.Credits.Bulk(ctx, action string, ids []string) // []Credit
+```
+
+### Get Blank Credit
+
+```go
+credit, err := client.Credits.GetBlank(ctx)
+```
+
+---
+
+## Downloads Service
+
+Each method reads the whole response into memory and returns the raw bytes. Requests are sent with `Accept: application/pdf`, and a response with status 400 or above is returned as an `*APIError`.
+
+| Method | Request |
+|--------|---------|
+| `DownloadInvoicePDF(ctx, invitationKey string) ([]byte, error)` | `GET /api/v1/invoice/{invitationKey}/download` |
+| `DownloadInvoiceDeliveryNote(ctx, invoiceID string) ([]byte, error)` | `GET /api/v1/invoices/{invoiceID}/delivery_note` |
+| `DownloadCreditPDF(ctx, invitationKey string) ([]byte, error)` | `GET /api/v1/credit/{invitationKey}/download` |
+| `DownloadQuotePDF(ctx, invitationKey string) ([]byte, error)` | `GET /api/v1/quote/{invitationKey}/download` |
+
+```go
+pdfBytes, err := client.Downloads.DownloadInvoicePDF(ctx, invitationKey)
+if err != nil {
+    return err
+}
+if err := os.WriteFile("invoice.pdf", pdfBytes, 0o600); err != nil {
+    return err
+}
+```
+
+---
+
+## Uploads Service
+
+Each method sends the file as multipart form data in a `POST` request, with the file in the `documents[]` field and `_method=PUT`, and returns only an error. The file content is buffered in memory before the request is sent, and a response with status 400 or above is returned as an `*APIError`.
+
+| Method | Request |
+|--------|---------|
+| `UploadDocument(ctx, entityType, entityID, filePath string) error` | `POST /api/v1/{entityType}/{entityID}/upload` |
+| `UploadInvoiceDocument(ctx, invoiceID, filePath string) error` | `POST /api/v1/invoices/{invoiceID}/upload` |
+| `UploadPaymentDocument(ctx, paymentID, filePath string) error` | `POST /api/v1/payments/{paymentID}/upload` |
+| `UploadClientDocument(ctx, clientID, filePath string) error` | `POST /api/v1/clients/{clientID}/upload` |
+| `UploadCreditDocument(ctx, creditID, filePath string) error` | `POST /api/v1/credits/{creditID}/upload` |
+| `UploadDocumentFromReader(ctx, entityType, entityID, filename string, reader io.Reader) error` | `POST /api/v1/{entityType}/{entityID}/upload` |
+
+`entityType` is the plural path segment, such as `"invoices"` or `"clients"`. The methods that take `filePath` open the file and use its base name as the upload filename.
+
+```go
+err := client.Uploads.UploadInvoiceDocument(ctx, invoiceID, "receipt.pdf")
+
+// Upload from memory or any other io.Reader:
+err = client.Uploads.UploadDocumentFromReader(ctx, "invoices", invoiceID, "receipt.pdf", bytes.NewReader(data))
+```
+
 ---
 
 ## Payment Terms Service
@@ -268,7 +477,11 @@ err := client.Credits.Delete(ctx, creditID string)
 ### List Payment Terms
 
 ```go
-terms, err := client.PaymentTerms.List(ctx, &PaymentTermListOptions{...})
+terms, err := client.PaymentTerms.List(ctx, &PaymentTermListOptions{
+    PerPage: int,    // Items per page
+    Page:    int,    // Page number
+    Include: string, // Related entities to include
+})
 ```
 
 ### Get Payment Term
@@ -290,6 +503,25 @@ term, err := client.PaymentTerms.Create(ctx, &PaymentTerm{
 
 ```go
 term, err := client.PaymentTerms.Update(ctx, termID string, &PaymentTerm{...})
+```
+
+### Archive and Restore
+
+```go
+term, err := client.PaymentTerms.Archive(ctx, termID string)
+term, err := client.PaymentTerms.Restore(ctx, termID string)
+```
+
+### Bulk Actions
+
+```go
+terms, err := client.PaymentTerms.Bulk(ctx, action string, ids []string) // []PaymentTerm
+```
+
+### Get Blank Payment Term
+
+```go
+term, err := client.PaymentTerms.GetBlank(ctx)
 ```
 
 ### Delete Payment Term
@@ -348,13 +580,31 @@ credit, err := event.ParseCredit()   // *Credit
 For endpoints not covered by specialized methods:
 
 ```go
-var result json.RawMessage
-err := client.Request(ctx, method, path string, body, result interface{})
+Request(ctx, method, path string, body, result interface{}) error
+RequestWithQuery(ctx, method, path string, query url.Values, body, result interface{}) error
 ```
+
+`path` is appended to the base URL, so API paths must include the `/api/v1` prefix. A non-nil `body` is sent as JSON, a non-empty response body is decoded into `result` when `result` is not `nil`, and a response with status 400 or above is returned as an `*APIError`.
 
 Example:
 
 ```go
-var activities []map[string]interface{}
+var activities struct {
+    Data []map[string]interface{} `json:"data"`
+}
 err := client.Request(ctx, "GET", "/api/v1/activities", nil, &activities)
+
+query := url.Values{}
+query.Set("per_page", "50")
+
+var products json.RawMessage
+err = client.RequestWithQuery(ctx, "GET", "/api/v1/products", query, nil, &products)
 ```
+
+### Base URL
+
+```go
+client.SetBaseURL(baseURL string)
+```
+
+Changes the base URL of an existing client, for example to point it at a self-hosted instance. A trailing `/` is removed.

@@ -57,21 +57,24 @@ When creating API tokens in Invoice Ninja, consider:
 
 ## Self-Hosted Authentication
 
-For self-hosted instances, you may also need to provide an API secret:
+For self-hosted instances, set the base URL and authenticate with an API token as usual:
 
 ```go
 client := invoiceninja.NewClient("your-api-token",
     invoiceninja.WithBaseURL("https://your-instance.com"),
-    invoiceninja.WithAPISecret("your-api-secret"), // if required
 )
 ```
 
+The SDK does not send an API secret (the `X-API-SECRET` header), and token-authenticated requests don't need one. Invoice Ninja checks the API secret only on account routes such as signup, login and password reset.
+
 ## Handling Authentication Errors
+
+Use `invoiceninja.IsAPIError` rather than a type assertion. It uses `errors.As`, so it also finds an `*APIError` inside wrapped errors, such as those returned by `Clients.SwitchToClientPortal`.
 
 ```go
 payments, err := client.Payments.List(ctx, nil)
 if err != nil {
-    if apiErr, ok := err.(*invoiceninja.APIError); ok {
+    if apiErr, ok := invoiceninja.IsAPIError(err); ok {
         if apiErr.IsUnauthorized() {
             log.Fatal("Invalid API token - please check your credentials")
         }
@@ -108,7 +111,7 @@ func createClient() *invoiceninja.Client {
     
     _, err := client.Payments.List(ctx, &invoiceninja.PaymentListOptions{PerPage: 1})
     if err != nil {
-        if apiErr, ok := err.(*invoiceninja.APIError); ok && apiErr.IsUnauthorized() {
+        if apiErr, ok := invoiceninja.IsAPIError(err); ok && apiErr.IsUnauthorized() {
             if fallbackToken != "" {
                 log.Println("Primary token failed, trying fallback")
                 return invoiceninja.NewClient(fallbackToken)
