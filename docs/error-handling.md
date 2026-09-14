@@ -132,11 +132,12 @@ Invoice Ninja enforces rate limits. When exceeded, you'll receive a 429 error. W
 
 ```go
 if apiErr, ok := invoiceninja.IsAPIError(err); ok && apiErr.IsRateLimited() {
-    // Check for Retry-After header
+    // Retry-After is either a number of seconds or an HTTP date
     retryAfter := apiErr.Headers.Get("Retry-After")
-    if retryAfter != "" {
-        duration, _ := strconv.Atoi(retryAfter)
-        time.Sleep(time.Duration(duration) * time.Second)
+    if seconds, err := strconv.Atoi(retryAfter); err == nil {
+        time.Sleep(time.Duration(seconds) * time.Second)
+    } else if date, err := http.ParseTime(retryAfter); err == nil {
+        time.Sleep(time.Until(date))
     }
 }
 ```

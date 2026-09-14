@@ -155,21 +155,35 @@ func isIdempotent(method string) bool {
 	}
 }
 
+// maxRetryAfterSeconds is the largest number of seconds that fits in a time.Duration.
+const maxRetryAfterSeconds = int64(math.MaxInt64 / int64(time.Second))
+
 // parseRetryAfter parses a Retry-After header value, which is either a number of
-// seconds or an HTTP date.
+// seconds or an HTTP date. A delay too long for a time.Duration is returned as the
+// longest possible duration, so it is never mistaken for a short or negative wait.
 func parseRetryAfter(value string, now time.Time) (time.Duration, bool) {
 	if value == "" {
 		return 0, false
 	}
 
-	if seconds, err := strconv.Atoi(value); err == nil {
-		if seconds < 0 {
+	seconds, err := strconv.ParseInt(value, 10, 64)
+	if errors.Is(err, strconv.ErrRange) && !strings.HasPrefix(value, "-") {
+		// Too many seconds for an int64, so wait as long as possible
+		return time.Duration(math.MaxInt64), true
+	}
+	if err == nil {
+		switch {
+		case seconds < 0:
 			return 0, false
+		case seconds > maxRetryAfterSeconds:
+			// Too many seconds for a time.Duration, so wait as long as possible
+			return time.Duration(math.MaxInt64), true
+		default:
+			return time.Duration(seconds) * time.Second, true
 		}
-		return time.Duration(seconds) * time.Second, true
 	}
 
-	if date, err := http.ParseTime(value); err == nil {
+	if date, parseErr := http.ParseTime(value); parseErr == nil {
 		if wait := date.Sub(now); wait > 0 {
 			return wait, true
 		}
@@ -216,12 +230,17 @@ func NewRateLimiter(requestsPerSecond int) *RateLimiter {
 }
 
 // Wait blocks until a request is allowed under the rate limit or ctx is done.
+// A context that is already done returns its error without using a slot.
 func (r *RateLimiter) Wait(ctx context.Context) error {
 	if r.requestsLimit <= 0 {
 		return ctx.Err()
 	}
 
 	for {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+
 		r.mu.Lock()
 
 		now := time.Now()

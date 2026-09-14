@@ -154,6 +154,50 @@ func TestRateLimiterDisabled(t *testing.T) {
 	}
 }
 
+func TestRateLimiterCanceledContextDoesNotUseSlot(t *testing.T) {
+	limiter := NewRateLimiter(1)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	if err := limiter.Wait(ctx); !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected context.Canceled, got %v", err)
+	}
+
+	// The canceled call must not have used the only slot
+	start := time.Now()
+	if err := limiter.Wait(context.Background()); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if elapsed := time.Since(start); elapsed > 100*time.Millisecond {
+		t.Errorf("expected a free slot, waited %v", elapsed)
+	}
+}
+
+func TestParseRetryAfterTooLarge(t *testing.T) {
+	const maxDuration = time.Duration(1<<63 - 1)
+	now := time.Now()
+
+	for _, value := range []string{"9223372037", "99999999999999999999"} {
+		wait, ok := parseRetryAfter(value, now)
+		if !ok || wait != maxDuration {
+			t.Errorf("parseRetryAfter(%q) = %v, %v, want the maximum duration", value, wait, ok)
+		}
+	}
+
+	if _, ok := parseRetryAfter("-99999999999999999999", now); ok {
+		t.Error("expected a negative out-of-range value to be invalid")
+	}
+
+	// A delay too long to represent stops retrying instead of retrying immediately
+	headers := http.Header{}
+	headers.Set("Retry-After", "9223372037")
+	if _, ok := DefaultRetryConfig().calculateBackoff(0, &APIError{StatusCode: 429, Headers: headers}); ok {
+		t.Error("expected no retry when Retry-After is longer than MaxBackoff")
+	}
+}
+
 func TestNewRateLimitedClient(t *testing.T) {
 	client := NewRateLimitedClient("test-token")
 
