@@ -158,18 +158,21 @@ invoice, err := client.Invoices.Get(ctx, invoiceID string)
 
 ```go
 invoice, err := client.Invoices.Create(ctx, &Invoice{
-    ClientID:    string,     // Required
-    Date:        string,     // Invoice date
-    DueDate:     string,     // Due date
-    LineItems:   []LineItem, // Invoice items
-    PublicNotes: string,     // Client-visible notes
-    Terms:       string,     // Payment terms
-    Footer:      string,     // Footer text
-    Discount:    float64,    // Discount amount
-    TaxName1:    string,     // Tax name
-    TaxRate1:    float64,    // Tax rate
+    ClientID:           string,     // Required
+    Date:               string,     // Invoice date
+    DueDate:            string,     // Due date
+    LineItems:          []LineItem, // Invoice items
+    PublicNotes:        string,     // Client-visible notes
+    Terms:              string,     // Payment terms
+    Footer:             string,     // Footer text
+    Discount:           float64,    // Discount amount
+    TaxName1:           string,     // Tax name
+    TaxRate1:           float64,    // Tax rate
+    UsesInclusiveTaxes: bool,       // Line item prices already include taxes
 })
 ```
+
+`UsesInclusiveTaxes` is left out of the request when it is `false` (like other `bool` fields), so an update can't switch an invoice back to exclusive taxes.
 
 ### Update Invoice
 

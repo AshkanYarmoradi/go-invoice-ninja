@@ -297,3 +297,37 @@ func TestInvoiceListOptionsNilToQuery(t *testing.T) {
 		t.Error("expected nil query for nil options")
 	}
 }
+
+func TestInvoiceDiscountAndInclusiveTaxesJSON(t *testing.T) {
+	var invoice Invoice
+	body := []byte(`{"id":"inv123","discount":10.5,"uses_inclusive_taxes":true}`)
+	if err := json.Unmarshal(body, &invoice); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if invoice.Discount != 10.5 {
+		t.Errorf("expected discount to be 10.5, got %f", invoice.Discount)
+	}
+
+	if !invoice.UsesInclusiveTaxes {
+		t.Error("expected UsesInclusiveTaxes to be true")
+	}
+
+	encoded, err := json.Marshal(&Invoice{ClientID: "client123", Discount: 5, UsesInclusiveTaxes: true})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var fields map[string]interface{}
+	if err := json.Unmarshal(encoded, &fields); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if fields["discount"] != 5.0 {
+		t.Errorf("expected discount to be 5 in request body, got %v", fields["discount"])
+	}
+
+	if fields["uses_inclusive_taxes"] != true {
+		t.Errorf("expected uses_inclusive_taxes to be true in request body, got %v", fields["uses_inclusive_taxes"])
+	}
+}
