@@ -156,7 +156,7 @@ func isIdempotent(method string) bool {
 }
 
 // maxRetryAfterSeconds is the largest number of seconds that fits in a time.Duration.
-const maxRetryAfterSeconds = int64(math.MaxInt64 / int64(time.Second))
+const maxRetryAfterSeconds = math.MaxInt64 / int64(time.Second)
 
 // parseRetryAfter parses a Retry-After header value, which is either a number of
 // seconds or an HTTP date. A delay too long for a time.Duration is returned as the
