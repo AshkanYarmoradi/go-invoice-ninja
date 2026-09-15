@@ -94,6 +94,9 @@ type Client struct {
 	// Invoices provides access to invoice-related endpoints.
 	Invoices *InvoicesService
 
+	// Expenses provides access to expense-related endpoints.
+	Expenses *ExpensesService
+
 	// Clients provides access to client-related endpoints.
 	Clients *ClientsService
 
@@ -185,6 +188,7 @@ func NewClient(apiToken string, opts ...ClientOption) *Client {
 	// Initialize services
 	c.Payments = &PaymentsService{client: c}
 	c.Invoices = &InvoicesService{client: c}
+	c.Expenses = &ExpensesService{client: c}
 	c.Clients = &ClientsService{client: c}
 	c.PaymentTerms = &PaymentTermsService{client: c}
 	c.Credits = &CreditsService{client: c}
